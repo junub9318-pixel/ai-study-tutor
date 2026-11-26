@@ -1,12 +1,12 @@
 /* =========================================================
    curriculum.js — 과목별 교육과정(단원 · 핵심 주제) 조회/생성
-   · Gemini(교육과정 프롬프트 + Google 검색 grounding 시도)
+   · 선택한 AI 제공자(Gemini 는 Google 검색 grounding 시도)
    · 키가 없거나 오프라인일 때는 기본 교육과정 안내
    ========================================================= */
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, generateText, parseJSON,
-  getKey, getSetup, fastModel,
-} from './core.js?v=5e94bbb6'
+  getKey, getSetup, fastModel, liteModel, canSearch,
+} from './core.js?v=618d59f9'
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -195,11 +195,59 @@ const CUR_SYSTEM = `너는 학교 교육과정에 정통한 학습 설계자다.
 
 let groundingSupported = null; // null = 아직 모름, false = 이 키/모델에서 검색 grounding 불가
 
+/* Google 검색 grounding 은 무료 키에서 분당·일일 한도가 일반 generateContent 보다 훨씬 작다.
+   429(한도)를 만나면 모델을 갈아타며 재시도하지 않고, 곧바로 검색 없는 일반 호출 한 번으로 내려간다.
+   그마저 429면 요청을 더 두드리지 않고 기본 교육과정 카드로 채운다. */
+let groundingBlockedUntil = 0; // 검색 grounding 429 → 잠시(1분) 검색 시도하지 않음
+let quotaBlockedUntil = 0;     // 일반 호출까지 429 → 잠시 AI 시도 자체를 멈추고 기본 카드로
+const GROUND_COOLDOWN_MS = 60 * 1000;
+const QUOTA_COOLDOWN_MS = 60 * 1000;
+
+/** 무료 한도(429)로 기본 카드로 먼저 채웠을 때 보여 주는 안내 */
+export const QUOTA_NOTICE = 'Google 검색 무료 한도에 걸려 기본 요약으로 먼저 채웠어요. 1분 뒤 다시 확인하거나 그대로 계속 진행할 수 있어요.';
+
 function isFatalError(e) {
   return !!e && (e.code === 'bad_key' || e.code === 'no_key' || e.code === 'forbidden');
 }
 function isEnvError(e) {
-  return !!e && (e.code === 'quota' || e.code === 'server' || e.code === 'network');
+  return !!e && (e.code === 'server' || e.code === 'network');
+}
+function isQuotaError(e) {
+  return !!e && (e.code === 'quota' || e.quota === true);
+}
+function groundingReady() {
+  return groundingSupported !== false && Date.now() >= groundingBlockedUntil;
+}
+function quotaCooling() {
+  return Date.now() < quotaBlockedUntil;
+}
+function coolDownGrounding() {
+  groundingBlockedUntil = Date.now() + GROUND_COOLDOWN_MS;
+}
+function coolDownQuota() {
+  const until = Date.now() + QUOTA_COOLDOWN_MS;
+  quotaBlockedUntil = until;
+  groundingBlockedUntil = Math.max(groundingBlockedUntil, until);
+}
+/** 호출부가 quota(429)를 알아볼 수 있게 code 를 붙인 오류 */
+function quotaFailure(lastErr) {
+  const err = new Error((lastErr && lastErr.message) || '무료 사용량 한도를 넘었어요.');
+  err.code = 'quota';
+  err.quota = true;
+  return err;
+}
+/** 검색 없는 일반 호출용 모델 순서: 여유 있는 lite 먼저, 그다음 지금 쓰는 모델 */
+function plainChain() {
+  const a = liteModel();
+  const b = fastModel();
+  return a === b ? [a] : [a, b];
+}
+
+/* Groq · OpenRouter 처럼 검색 grounding 이 없는 제공자에서 쓰는 지시문.
+   프롬프트의 "Google 검색으로 확인한다" 문장을 덮어써서 지어낸 확인을 막는다. */
+const NO_SEARCH_RULE = '\n\n[환경] 지금은 Google 검색(grounding)을 쓸 수 없는 AI 제공자로 동작한다. 검색을 시도하지 말고 네가 아는 교육과정·교과서 목차 지식으로 정리한다. 검색으로 확인했다고 쓰지 말고 confirmed=false 로 두며, note 에 "AI 지식 기준"이라고 밝힌다.';
+function systemFor(base) {
+  return canSearch() ? base : base + NO_SEARCH_RULE;
 }
 
 /**
@@ -211,6 +259,8 @@ async function groundedJSON({ system, text, temperature = 0.3, maxTokens = 1800,
   const raw = await generateText({
     system, parts: [{ text }], temperature, maxTokens, tools: [{ google_search: {} }],
     timeoutMs, signal, fast: true, model: model || fastModel(),
+    // 검색 429 는 다른 모델로 재시도하지 않고 바로 일반 호출 폴백으로 넘긴다
+    attempts: 1, stopOnQuota: true,
   });
   return parseJSON(raw);
 }
@@ -226,7 +276,7 @@ const TEXTBOOK_SYSTEM = `너는 교과서 목차에 정통한 학습 설계자�
 - unitTitle: 이번 학기 범위를 한 줄로 (25자 이내, 예: "공통수학 1 · Ⅰ~Ⅲ단원").
 - 출력은 설명 없이 JSON 객체 하나만. 키: curriculumName, unitTitle, topics[{title, focus}], textbookName, publisher, confirmed, note.`;
 
-function normalize(data, subjectId, { tb = {}, grounded = false, maxTopics = 8 } = {}) {
+function normalize(data, subjectId, { tb = {}, grounded = false, maxTopics = 8, searchSkipped = false } = {}) {
   const topics = (data && Array.isArray(data.topics) ? data.topics : [])
     .map(t => ({ title: String((t && t.title) || '').trim().slice(0, 60), focus: String((t && t.focus) || '').trim().slice(0, 80) }))
     .filter(t => t.title)
@@ -245,6 +295,7 @@ function normalize(data, subjectId, { tb = {}, grounded = false, maxTopics = 8 }
     textbook: (name || publisher) ? { name, publisher } : null,
     confirmed: !!(data && data.confirmed),
     grounded: !!grounded,
+    searchSkipped: !!searchSkipped && !grounded,
     source: 'ai',
   };
 }
@@ -263,12 +314,14 @@ async function requestAI(subjectId, learner, materials, { signal, tb = {}, timeo
     learnerLines(learner),
     mat ? `\n학생이 올린 자료(단원명이 있으면 우선 반영):\n${mat}` : '',
   ].join('\n');
-  const system = hasTb ? TEXTBOOK_SYSTEM : CUR_SYSTEM;
+  const system = systemFor(hasTb ? TEXTBOOK_SYSTEM : CUR_SYSTEM);
   const maxTopics = hasTb ? 12 : 8;
   // 교과서·자료가 있을 때만 검색(정확도) — 교육과정만 볼 때는 빠른 프롬프트로 끝낸다
-  const wantGround = hasTb || (materials || []).length > 0;
+  const wantGround = (hasTb || (materials || []).length > 0) && canSearch();
 
-  if (wantGround && groundingSupported !== false) {
+  if (quotaCooling()) throw quotaFailure(null);
+
+  if (wantGround && groundingReady()) {
     try {
       onProgress && onProgress('search');
       const out = await groundedJSON({
@@ -278,17 +331,35 @@ async function requestAI(subjectId, learner, materials, { signal, tb = {}, timeo
       return normalize(out, subjectId, { tb, grounded: true, maxTopics });
     } catch (e) {
       if (e && e.name === 'AbortError') throw e;
-      if (isFatalError(e) || isEnvError(e)) throw e;
-      // 검색 결과 형식·도구 미지원 → 검색 없이 다시
-      if (e && (e.code === 'bad_request' || e.code === 'no_model' || e.code === 'parse')) groundingSupported = false;
-      onProgress && onProgress('noground');
+      if (isFatalError(e)) throw e;
+      if (isQuotaError(e)) {
+        // Google 검색 grounding 한도(429): 모델을 갈아타지 않고 검색 없는 일반 호출 1회로 폴백
+        coolDownGrounding();
+        onProgress && onProgress('quota');
+      } else if (isEnvError(e)) {
+        throw e; // 네트워크·서버 혼잡: 같은 길로 다시 해도 같다
+      } else {
+        // 검색 결과 형식·도구 미지원 → 검색 없이 다시
+        if (e && (e.code === 'bad_request' || e.code === 'no_model' || e.code === 'parse')) groundingSupported = false;
+        onProgress && onProgress('noground');
+      }
     }
   }
-  const out = await generateJSON({
-    system, parts: [{ text: user }], schema: CUR_SCHEMA, temperature: 0.35, maxTokens: 1800,
-    signal, timeoutMs: timeoutMs || 14000,
-  });
-  return normalize(out, subjectId, { tb, grounded: false, maxTopics });
+  try {
+    const out = await generateJSON({
+      system, parts: [{ text: user }], schema: CUR_SCHEMA, temperature: 0.35, maxTokens: 1800,
+      signal, timeoutMs: timeoutMs || 14000,
+      chain: plainChain(), attempts: 2, stopOnQuota: true,
+    });
+    return normalize(out, subjectId, { tb, grounded: false, maxTopics, searchSkipped: wantGround });
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    if (isQuotaError(e)) {
+      coolDownQuota();
+      throw quotaFailure(e);
+    }
+    throw e;
+  }
 }
 
 /**
@@ -310,9 +381,15 @@ export async function buildCurriculum(subjectId, { learner, materials = [], text
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
     const b = basicCurriculum(subjectId);
-    b.reason = 'error';
-    b.error = (e && e.message) || 'AI 교육과정을 받지 못했어요.';
     if (tb.name || tb.publisher) b.textbook = tb;
+    b.error = (e && e.message) || 'AI 교육과정을 받지 못했어요.';
+    if (isQuotaError(e)) {
+      // 429: 요청을 더 두드리지 않고 기본 교육과정 카드로 자연스럽게 채운다
+      b.reason = 'quota';
+      b.fallbackNotice = QUOTA_NOTICE;
+      return b;
+    }
+    b.reason = 'error';
     return b;
   }
 }
@@ -449,7 +526,7 @@ const SCHOOL_SYSTEM = `너는 각국 학교 교육과정에 정통한 학습 설
 - subjects: 이 학년·학기에 실제로 배우는 과목 5~10개. name은 실제 교과명(예: "공통수학 1", "통합과학", "한국사"), kind는 "공통"·"선택"·"전공" 중 하나.
 - 확실하지 않은 내용은 일반적인 편성으로 채우고, 그렇게 채운 사실을 note에 밝힌다.`;
 
-function normalizeSchool(data, info, { grounded = false } = {}) {
+function normalizeSchool(data, info, { grounded = false, searchSkipped = false } = {}) {
   const base = basicSchoolInfo(info);
   const subjects = (data && Array.isArray(data.subjects) ? data.subjects : [])
     .map(s => ({
@@ -473,6 +550,7 @@ function normalizeSchool(data, info, { grounded = false } = {}) {
     semesterFocus: String((data && data.semesterFocus) || '').trim().slice(0, 160),
     subjects: subjects.length ? subjects : base.subjects,
     note: String((data && data.note) || '').trim().slice(0, 200),
+    searchSkipped: !!searchSkipped && !grounded,
     source: 'ai',
   };
 }
@@ -496,32 +574,55 @@ export async function verifySchool(info = {}, { signal, timeoutMs = 22000, onPro
     info.schoolNote ? `학교 메모: ${info.schoolNote}` : '',
   ].filter(Boolean).join('\n');
   const base = {
-    system: SCHOOL_SYSTEM, parts: [{ text: user }], temperature: 0.3, maxTokens: 1800,
+    system: systemFor(SCHOOL_SYSTEM), parts: [{ text: user }], temperature: 0.3, maxTokens: 1800,
     signal, fast: true, model: fastModel(),
   };
   try {
-    if (groundingSupported !== false) {
+    if (quotaCooling()) throw quotaFailure(null);
+    if (groundingReady()) {
       try {
         onProgress && onProgress('search');
-        const raw = await generateText({ ...base, tools: [{ google_search: {} }], timeoutMs });
+        const raw = await generateText({
+          ...base, tools: [{ google_search: {} }], timeoutMs, attempts: 1, stopOnQuota: true,
+        });
         const data = parseJSON(raw);
         groundingSupported = true;
         return normalizeSchool(data, info, { grounded: true });
       } catch (e) {
         if (e && e.name === 'AbortError') throw e;
-        if (isFatalError(e) || isEnvError(e)) throw e;
-        if (e && (e.code === 'bad_request' || e.code === 'no_model' || e.code === 'parse')) groundingSupported = false;
-        onProgress && onProgress('noground');
+        if (isFatalError(e)) throw e;
+        if (isQuotaError(e)) {
+          // 검색 grounding 한도(429): 다른 모델을 두드리지 않고 검색 없는 일반 호출로 폴백
+          coolDownGrounding();
+          onProgress && onProgress('quota');
+        } else if (isEnvError(e)) {
+          throw e;
+        } else {
+          if (e && (e.code === 'bad_request' || e.code === 'no_model' || e.code === 'parse')) groundingSupported = false;
+          onProgress && onProgress('noground');
+        }
       }
     }
-    const out = await generateJSON({ ...base, schema: SCHOOL_SCHEMA, timeoutMs: Math.min(14000, timeoutMs) });
-    return normalizeSchool(out, info, { grounded: false });
+    const out = await generateJSON({
+      ...base, schema: SCHOOL_SCHEMA, timeoutMs: Math.min(14000, timeoutMs),
+      chain: plainChain(), attempts: 2, stopOnQuota: true,
+    });
+    return normalizeSchool(out, info, { grounded: false, searchSkipped: true });
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
+    if (isQuotaError(e)) coolDownQuota();
     const b = basicSchoolInfo(info);
     b.fastFallback = true;
     b.summary = String(b.summary).replace(/\s*AI 키를 연결하면[^.]*?\.\s*$/, '').trim();
     b.note = '기본 교육과정 안내로 먼저 보여 드렸어요.';
+    if (isQuotaError(e)) {
+      // 전체 429: 요청을 멈추고 기본 교육과정으로 자연스럽게 이어 간다
+      b.reason = 'quota';
+      b.fallbackNotice = QUOTA_NOTICE;
+      b.note = QUOTA_NOTICE;
+      b.error = '';
+      return b;
+    }
     b.error = (e && e.code === 'timeout')
       ? 'AI 응답이 늦어 기본 교육과정으로 먼저 보여 드렸어요. "학교 확인"을 다시 누르면 새로 시도해요.'
       : ((e && e.message) || 'AI가 학교를 확인하지 못했어요.');

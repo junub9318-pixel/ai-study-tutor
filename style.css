@@ -1685,3 +1685,32 @@ html[data-theme="light"] .face.back{ background: var(--surface-2); }
 .onb .unit-add-input{ background:#151519; border-color:#2a2a33; }
 .cur-mini-row .cm-tb{ color: var(--muted); font-size:10.5px; margin-top:2px; }
 .modal-tb .modal-body{ max-height: 76vh; overflow-y: auto; }
+
+/* ---------------- AI 제공자 선택 (Gemini · Groq · OpenRouter) ---------------- */
+.prov-pick{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:16px; }
+.prov-card{
+  position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  padding:10px 10px 9px; border-radius:13px; border:1px solid var(--border);
+  background:var(--surface-2); text-align:left; color:var(--text-2); cursor:pointer;
+}
+.prov-card.on{ border-color:#6f8bff; background:rgba(111,139,255,.14); color:var(--text); box-shadow:inset 0 0 0 2px rgba(111,139,255,.14); }
+.prov-card .prov-ico{ font-size:16px; line-height:1; }
+.prov-card .prov-name{ font-size:12.5px; font-weight:800; line-height:1.25; }
+.prov-card .prov-name small{ display:block; font-size:9.5px; font-weight:600; color:var(--muted); }
+.prov-card .prov-flag{
+  position:absolute; top:7px; right:7px; font-size:9px; font-weight:800; color:#9fb0ff;
+  background:rgba(111,139,255,.16); padding:2px 5px; border-radius:6px;
+}
+.prov-guide{ margin-top:12px; padding:12px 13px; border-radius:14px; background:var(--surface-2); border:1px solid var(--border-soft); }
+.prov-guide .prov-lead{ margin:0 0 9px; font-size:12.5px; color:var(--text-2); line-height:1.55; }
+.prov-steps{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.prov-steps li{ display:flex; gap:8px; font-size:12px; line-height:1.55; color:var(--text-2); }
+.prov-steps .num{
+  width:18px; height:18px; border-radius:50%; background:rgba(111,139,255,.18); color:#9fb0ff;
+  font-size:10px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px;
+}
+.prov-steps a{ color:#9fb0ff; text-decoration:underline; word-break:break-all; }
+.prov-steps code, .prov-keyex code{ font-size:11px; background:rgba(255,255,255,.07); padding:1px 5px; border-radius:5px; }
+.prov-keyex{ margin:9px 0 0; font-size:11.5px; color:var(--muted); }
+.prov-caution{ margin:6px 0 0; font-size:11px; color:var(--muted); line-height:1.55; }
+@media (max-width: 380px){ .prov-pick{ grid-template-columns:1fr; } }

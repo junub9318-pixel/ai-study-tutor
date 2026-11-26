@@ -3,8 +3,8 @@
    ========================================================= */
 import {
   K, load, save, DIFFICULTY_LEVELS, getDifficulty, setDifficulty, escapeHtml, toast, openModal,
-} from './core.js?v=5e94bbb6';
-import { subjectLabel, subjectIcon } from './curriculum.js?v=5e94bbb6';
+} from './core.js?v=618d59f9';
+import { subjectLabel, subjectIcon } from './curriculum.js?v=618d59f9';
 
 const THROTTLE_MS = 6 * 60 * 1000; // 같은 과목에서 연속으로 묻지 않도록
 const PROMPT_AT_KEY = 'aitutor.v1.diffPromptAt';

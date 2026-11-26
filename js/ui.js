@@ -5,8 +5,9 @@ import {
   SUBJECTS, K, state, load, save, removeKey, currentSubject, setSubject,
   $, $$, el, escapeHtml, fmt, toast, openModal, hasKey, getKey, setKey, clearKey,
   connectTest, getModel, listModels, ApiError, saveSettings, saveMaterials, uid, dayKey,
-} from './core.js?v=5e94bbb6';
-import { renderHeaderChips } from './gamify.js?v=5e94bbb6';
+  providerInfo, PROVIDER_IDS, getProvider, setProvider, getKeyFor, setKeyFor, clearKeyFor, getModelFor, canSearch,
+} from './core.js?v=618d59f9';
+import { renderHeaderChips } from './gamify.js?v=618d59f9';
 
 /* ---------------- theme ---------------- */
 export function initTheme() {
@@ -137,79 +138,153 @@ export function renderKeyState() {
 }
 
 export function openKeyModal() {
-  const ok = hasKey();
-  const modelLine = getModel() ? `${getModel()}` : '자동 선택 (연결 시 Flash 모델 탐색)';
+  const active = getProvider();
+  const modelLine = getModelFor(active) || '자동 선택 (연결 테스트 때 고름)';
   const modal = openModal(`
-    <div class="modal-head"><h2>Gemini API 키 연결</h2><button class="icon-btn" data-close type="button">✕</button></div>
+    <div class="modal-head"><h2>AI 연결 · 제공자 선택</h2><button class="icon-btn" data-close type="button">✕</button></div>
     <div class="modal-body">
-      <p class="hint">이 앱은 <b>각자 무료 Google AI Studio 키</b>로 Gemini를 브라우저에서 직접 호출합니다. 키는 서버를 거치지 않고 <b>이 기기 브라우저(localStorage)에만</b> 저장돼요. 친구에게 앱을 공유해도 키는 각자 것을 씁니다.</p>
-      <ol class="steps">
-        <li><span class="num">1</span><div><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> 에 접속해 Google 계정으로 로그인</div></li>
-        <li><span class="num">2</span><div><b>Create API key</b> → 프로젝트 선택 → 키 생성 (무료, 카드 등록 없음)</div></li>
-        <li><span class="num">3</span><div>만들어진 키(<code>AIza…</code>)를 복사해 아래에 붙여넣고 <b>저장하고 연결 테스트</b></div></li>
-      </ol>
-      <label class="field"><span>API 키</span>
-        <input id="apiKeyInput" type="password" autocomplete="off" spellcheck="false" placeholder="AIza..." value="${escapeHtml(getKey())}" />
-      </label>
-      <div class="status" id="keyStatus" hidden></div>
+      <p class="hint">Gemini · Groq · OpenRouter 중 <b>하나의 무료 키</b>만 있으면 이 앱의 모든 AI 수업(튜터·문제·카드·팟캐스트·시뮬레이션)을 쓸 수 있어요. 키는 서버를 거치지 않고 <b>이 기기 브라우저(localStorage)에만</b> 저장됩니다.</p>
+      <div id="provPanel">${providerPanelHtml()}</div>
       <div class="key-foot">
-        <button class="primary" id="keySave" type="button">저장하고 연결 테스트</button>
-        <button class="ghost-btn danger" id="keyDelete" type="button">키 삭제</button>
+        <button class="ghost-btn danger" id="keyDelete" type="button">이 제공자 키 삭제</button>
       </div>
-      <p class="fine">사용 모델: <b id="modelInfo">${escapeHtml(modelLine)}</b><br/>
-      무료 키는 모델별 사용량 한도가 있어요. 한도에 걸리면 다른 Flash 모델로 자동 전환합니다.<br/>
+      <p class="fine" id="modelInfo">사용 모델: <b>${escapeHtml(modelLine)}</b><br/>
+      제공자를 누르면 그 제공자의 안내로 바뀌고, 키는 제공자별로 따로 저장돼요.<br/>
       학교 공용 PC에서는 사용 후 키를 삭제하세요.</p>
     </div>`);
 
-  const input = modal.root.querySelector('#apiKeyInput');
-  const status = modal.root.querySelector('#keyStatus');
-  const saveBtn = modal.root.querySelector('#keySave');
-  const delBtn = modal.root.querySelector('#keyDelete');
-
-  const setStatus = (html, cls = '') => {
-    status.hidden = false;
-    status.className = 'status ' + cls;
-    status.innerHTML = html;
+  const host = modal.root.querySelector('#provPanel');
+  const infoEl = modal.root.querySelector('#modelInfo');
+  const infoHtml = (id) => {
+    const mid = getModelFor(id) || '자동 선택 (연결 테스트 때 고름)';
+    return `사용 모델: <b>${escapeHtml(mid)}</b><br/>제공자를 누르면 그 제공자의 안내로 바뀌고, 키는 제공자별로 따로 저장돼요.`;
   };
-
-  saveBtn.addEventListener('click', async () => {
-    const key = input.value.trim();
-    if (!key) { setStatus('키를 입력해 주세요.', 'err'); return; }
-    if (!/^AIza[0-9A-Za-z_\-]{10,}$/.test(key) && key.length < 20) {
-      setStatus('키 형식이 조금 이상해요. <b>AIza…</b>로 시작하는 전체 키를 붙여넣어 주세요.', 'err');
-      return;
-    }
-    saveBtn.disabled = true;
-    setStatus('<span class="spinner"></span> 키를 확인하고 사용 가능한 모델을 찾는 중…');
-    try {
-      setKey(key);
-      const result = await connectTest(key, (msg) => setStatus(`<span class="spinner"></span> ${escapeHtml(msg)}`));
-      setStatus(`✅ 연결됐어요! 사용 모델: <b>${escapeHtml(result.model)}</b> · 사용 가능한 Flash 모델 ${result.models.filter(m => /flash/i.test(m)).length}개`, 'ok');
-      modal.root.querySelector('#modelInfo').textContent = result.model;
-      renderKeyState();
-      toast('Gemini 연결 완료', 'xp');
-      setTimeout(() => modal.close(), 1200);
-    } catch (e) {
-      clearKey();
-      renderKeyState();
-      setStatus('❌ ' + escapeHtml(e.message || '연결에 실패했어요.'), 'err');
-    } finally {
-      saveBtn.disabled = false;
-    }
+  const panel = bindProviderPanel(host, {
+    onConnected: (r) => {
+      infoEl.innerHTML = infoHtml(r.provider);
+      toast(`${providerInfo(r.provider).short} 연결 완료`, 'xp');
+    },
   });
+  host.addEventListener('provider:change', (e) => { infoEl.innerHTML = infoHtml(e.detail); });
 
-  delBtn.addEventListener('click', () => {
-    if (!confirm('이 기기에 저장된 API 키를 삭제할까요?')) return;
-    clearKey();
+  modal.root.querySelector('#keyDelete').addEventListener('click', () => {
+    const id = getProvider();
+    if (!confirm(`${providerInfo(id).short} 키를 이 기기에서 삭제할까요?`)) return;
+    clearKeyFor(id);
     renderKeyState();
-    input.value = '';
-    setStatus('키를 삭제했어요. 다시 사용하려면 새로 연결해 주세요.');
-    modal.root.querySelector('#modelInfo').textContent = '자동 선택 (연결 시 Flash 모델 탐색)';
+    panel.refresh();
+    infoEl.innerHTML = infoHtml(id);
+    toast(`${providerInfo(id).short} 키를 삭제했어요`, 'info');
   });
 }
 
 export function initKey() {
   renderKeyState();
+}
+
+/* ---------------- AI 제공자 선택 · 무료 키 발급 안내 ---------------- */
+function providerGuideHtml(id) {
+  const p = providerInfo(id);
+  return `
+    <p class="prov-lead">${p.lead}</p>
+    <ol class="prov-steps">
+      ${p.steps.map((s, i) => `<li><span class="num">${i + 1}</span><div>${s}</div></li>`).join('')}
+    </ol>
+    <p class="prov-keyex">키 형식: <code>${escapeHtml(p.keyExample)}</code></p>
+    <p class="prov-caution">${p.caution}</p>`;
+}
+
+/** 제공자 탭 · 무료 키 발급 안내 · 키 입력 · 연결 테스트 (온보딩·설정 공용) */
+export function providerPanelHtml() {
+  const active = getProvider();
+  return `
+    <div class="prov-pick" role="tablist" aria-label="AI 제공자 선택">
+      ${PROVIDER_IDS.map(id => {
+        const p = providerInfo(id);
+        return `<button type="button" class="prov-card${id === active ? ' on' : ''}" data-prov="${id}" role="tab" aria-selected="${id === active}">
+          <span class="prov-ico">${p.icon}</span>
+          <span class="prov-name">${escapeHtml(p.short)}<small>${escapeHtml(p.label)}</small></span>
+          <span class="prov-flag">${p.search ? '검색 지원' : '무료'}</span>
+        </button>`;
+      }).join('')}
+    </div>
+    <div class="prov-guide" id="provGuide">${providerGuideHtml(active)}</div>
+    <div class="onb-field">
+      <label id="provKeyLabel">${escapeHtml(providerInfo(active).short)} API 키</label>
+      <input class="onb-input" id="provKeyInput" type="password" autocomplete="off" spellcheck="false" placeholder="${escapeHtml(providerInfo(active).placeholder)}" value="${escapeHtml(getKeyFor(active))}" />
+    </div>
+    <div class="onb-key-row">
+      <button class="onb-test-btn" id="provKeyTest" type="button"><span class="onb-test-label">연결 테스트</span></button>
+    </div>
+    <div class="onb-status-slot"><div class="status" id="provKeyStatus" hidden></div></div>`;
+}
+
+/** providerPanelHtml 로 그린 화면에 동작을 붙인다 */
+export function bindProviderPanel(host, { onConnected } = {}) {
+  const cards = Array.from(host.querySelectorAll('[data-prov]'));
+  const guide = host.querySelector('#provGuide');
+  const label = host.querySelector('#provKeyLabel');
+  const input = host.querySelector('#provKeyInput');
+  const testBtn = host.querySelector('#provKeyTest');
+  const btnLabel = testBtn ? testBtn.querySelector('.onb-test-label') : null;
+  const status = host.querySelector('#provKeyStatus');
+
+  const setStatus = (html, cls = '') => {
+    if (!status) return;
+    status.hidden = false;
+    status.className = 'status' + (cls ? ' ' + cls : '');
+    status.innerHTML = `<span class="status-line">${html}</span>`;
+  };
+
+  const paint = (id) => {
+    const p = providerInfo(id);
+    cards.forEach(c => {
+      const on = c.dataset.prov === id;
+      c.classList.toggle('on', on);
+      c.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if (guide) guide.innerHTML = providerGuideHtml(id);
+    if (label) label.textContent = `${p.short} API 키`;
+    if (input) { input.placeholder = p.placeholder; input.value = getKeyFor(id) || ''; }
+    if (status) { status.hidden = true; status.innerHTML = ''; }
+    setProvider(id);
+    try { host.dispatchEvent(new CustomEvent('provider:change', { detail: id })); } catch (e) {}
+  };
+
+  cards.forEach(c => c.addEventListener('click', () => paint(c.dataset.prov)));
+  paint(getProvider());
+
+  if (testBtn) testBtn.addEventListener('click', async () => {
+    const id = getProvider();
+    const key = input ? input.value.trim() : '';
+    if (!key) { setStatus('키를 입력해 주세요.', 'err'); return; }
+    testBtn.disabled = true;
+    testBtn.classList.add('busy');
+    if (btnLabel) btnLabel.textContent = '확인 중…';
+    setStatus('<span class="spinner"></span> 키를 확인하고 사용할 수 있는 모델을 찾는 중…');
+    try {
+      setKeyFor(id, key);
+      const r = await connectTest(key, (m) => setStatus(`<span class="spinner"></span> ${escapeHtml(m)}`), id);
+      setStatus(`✅ ${escapeHtml(providerInfo(id).short)} 연결됐어요! 사용 모델: <b>${escapeHtml(r.model)}</b>`, 'ok');
+      renderKeyState();
+      if (onConnected) onConnected(r);
+    } catch (e) {
+      clearKeyFor(id);
+      renderKeyState();
+      setStatus('❌ ' + escapeHtml((e && e.message) || '연결에 실패했어요.'), 'err');
+    } finally {
+      testBtn.disabled = false;
+      testBtn.classList.remove('busy');
+      if (btnLabel) btnLabel.textContent = '연결 테스트';
+    }
+  });
+
+  return { refresh: () => paint(getProvider()) };
+}
+
+/** 지금 고른 제공자 이름 (버튼·상태 문구용) */
+export function providerName() {
+  return providerInfo(getProvider()).short;
 }
 
 export function initMaterialsButton() {

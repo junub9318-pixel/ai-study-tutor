@@ -7,21 +7,22 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=5e94bbb6';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=5e94bbb6';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=5e94bbb6';
+  getProvider, getKeyFor, setKeyFor, clearKeyFor, canSearch, providerInfo,
+} from './core.js?v=618d59f9';
+import { showView, openKeyModal, renderKeyState, providerPanelHtml, bindProviderPanel, providerName } from './ui.js?v=618d59f9';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=618d59f9';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
-  verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=5e94bbb6';
+  verifySchool, ageForGrade, gradesFor, subjectIdFromName, QUOTA_NOTICE,
+} from './curriculum.js?v=618d59f9';
 import {
   CURRICULUM_OPTIONS, CUSTOM_CURRICULUM, curriculumOptions, recommendCurriculum, curriculumHint,
   normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=5e94bbb6';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=5e94bbb6';
+} from './textbook.js?v=618d59f9';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=618d59f9';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=5e94bbb6';
+} from './routine.js?v=618d59f9';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
@@ -139,62 +140,19 @@ function render() {
   def.bind(body);
 }
 
-/* ---------------- step 1 · API key ---------------- */
+/* ---------------- step 1 · AI 연결 (제공자 선택 + 키) ---------------- */
 function stepKey() {
   return {
     html: () => `
       <p class="onb-eyebrow">STEP 1 · AI 연결</p>
       <h2 class="onb-title">먼저, 내 AI 열쇠를<br/>연결해요</h2>
-      <p class="onb-desc">Google AI Studio의 <b>무료 API 키</b> 하나로 이 앱의 모든 AI 수업(튜터·문제·카드·팟캐스트·시뮬레이션)을 쓸 수 있어요.<br/>키는 서버를 거치지 않고 <b>이 브라우저에만</b> 저장됩니다.</p>
-      <div class="onb-key-steps">
-        <div class="onb-key-step"><i>1</i><div><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> 에서 Google 로그인</div></div>
-        <div class="onb-key-step"><i>2</i><div><b>Create API key</b> → 프로젝트 선택 → 키 생성 (카드 등록 없음)</div></div>
-        <div class="onb-key-step"><i>3</i><div>만든 키(<code>AIza…</code>)를 아래에 붙여넣고 <b>연결 테스트</b></div></div>
-      </div>
-      <div class="onb-field">
-        <label>Gemini API 키</label>
-        <input class="onb-input" id="onbKeyInput" type="password" autocomplete="off" spellcheck="false" placeholder="AIza..." value="${escapeHtml(getKey())}" />
-      </div>
-      <div class="onb-key-row">
-        <button class="onb-test-btn" id="onbKeyTest" type="button"><span class="onb-test-label">연결 테스트</span></button>
-      </div>
-      <div class="onb-status-slot">
-        <div class="status" id="onbKeyStatus" hidden></div>
-      </div>
-      <p class="fine" style="margin-top:14px">학교 공용 기기라면 나중에 <b>설정 → Gemini API 키 → 키 삭제</b>를 눌러 주세요.</p>`,
+      <p class="onb-desc"><b>Gemini · Groq · OpenRouter</b> 중 하나의 <b>무료 API 키</b>만 있으면 이 앱의 모든 AI 수업(튜터·문제·카드·팟캐스트·시뮬레이션)을 쓸 수 있어요.<br/>키는 서버를 거치지 않고 <b>이 브라우저에만</b> 저장됩니다.</p>
+      <div id="onbProvPanel">${providerPanelHtml()}</div>
+      <p class="fine" style="margin-top:14px">학교 공용 기기라면 나중에 <b>설정 → AI 연결</b>에서 키를 삭제해 주세요.</p>`,
     bind: (body) => {
-      const status = el$('#onbKeyStatus', body);
-      const testBtn = el$('#onbKeyTest', body);
-      const label = el$('.onb-test-label', testBtn);
-      const setLine = (html, cls = '') => {
-        status.hidden = false;
-        status.className = 'status' + (cls ? ' ' + cls : '');
-        status.innerHTML = `<span class="status-line">${html}</span>`;
-      };
-      testBtn.addEventListener('click', async () => {
-        const key = el$('#onbKeyInput', body).value.trim();
-        if (!key) { setLine('키를 입력해 주세요.', 'err'); return; }
-        testBtn.disabled = true;
-        testBtn.classList.add('busy');
-        if (label) label.textContent = '확인 중…';
-        setLine('<span class="spinner"></span> 키를 확인하고 사용 가능한 모델을 찾는 중…');
-        try {
-          setKey(key);
-          const r = await connectTest(key, (m) => setLine(`<span class="spinner"></span> ${escapeHtml(m)}`));
-          keyOk = true;
-          setLine(`✅ 연결됐어요! 사용 모델 <b>${escapeHtml(r.model)}</b>`, 'ok');
-          renderKeyState();
-          setStepChrome();
-        } catch (e) {
-          keyOk = false;
-          clearKey();
-          renderKeyState();
-          setLine('❌ ' + escapeHtml(e.message || '연결하지 못했어요.'), 'err');
-        } finally {
-          testBtn.disabled = false;
-          testBtn.classList.remove('busy');
-          if (label) label.textContent = '연결 테스트';
-        }
+      const host = el$('#onbProvPanel', body);
+      bindProviderPanel(host, {
+        onConnected: () => { keyOk = true; renderKeyState(); setStepChrome(); },
       });
     },
   };
@@ -240,7 +198,7 @@ function stepSchool() {
     html: () => `
       <p class="onb-eyebrow">STEP 2 · 학교와 학기</p>
       <h2 class="onb-title">어디서, 몇 학기에<br/>무엇을 배우나요?</h2>
-      <p class="onb-desc">교육과정을 먼저 정하고 학교를 확인해요. AI가 <b>그 학교의 이번 학기 교육과정과 과목</b>을 Google 검색으로 찾아 요약해 주고, 확인한 내용은 과목·교과서·단원을 정할 때 그대로 쓰여요.</p>
+      <p class="onb-desc">교육과정을 먼저 정하고 학교를 확인해요. AI가 <b>그 학교의 이번 학기 교육과정과 과목</b>을 ${canSearch() ? 'Google 검색으로 찾아' : 'AI가 아는 정보로'} 요약해 주고, 확인한 내용은 과목·교과서·단원을 정할 때 그대로 쓰여요.${canSearch() ? '' : `<br/><span class="fine">지금 고른 ${escapeHtml(providerName())}는 Google 검색이 없어 AI 지식으로 확인해요.</span>`}</p>
 
       <div class="onb-field"><label>공부하는 나라</label>
         <select class="onb-input" id="onbCountry">
@@ -294,7 +252,7 @@ function stepSchool() {
           <input class="onb-input" id="onbSchool" placeholder="예: 세일고등학교" value="${escapeHtml(draft.school || '')}" />
           <button class="onb-check-btn" id="onbSchoolCheck" type="button">학교 확인</button>
         </div>
-        <p class="fine">AI가 Google 검색으로 학교와 이 학기 교육과정·과목을 찾아 확인해요. 정확히 찾느라 <b>20초 안팎</b> 걸릴 수 있어요. 학교를 모르면 비워 두고 확인해도 돼요.</p>
+        <p class="fine">${canSearch() ? 'AI가 Google 검색으로 학교와 이 학기 교육과정·과목을 찾아 확인해요. 정확히 찾느라 <b>20초 안팎</b> 걸릴 수 있어요.' : `AI가 ${escapeHtml(providerName())}로 이 학기 교육과정·과목을 정리해요. <b>10초 안팎</b> 걸려요.`} 학교를 모르면 비워 두고 확인해도 돼요.</p>
         <div class="status" id="onbSchoolStatus" hidden></div>
       </div>
 
@@ -416,10 +374,12 @@ function stepSchool() {
         checkBtn.textContent = '확인 중…';
         status.hidden = false;
         status.className = 'status';
-        status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${hasKey() ? 'AI가 Google 검색으로 학교·교육과정·이번 학기 과목을 찾는 중… (20초 안팎 걸릴 수 있어요)' : '기본 교육과정을 준비하는 중…'}</span>`;
+        status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${hasKey() ? (canSearch() ? 'AI가 Google 검색으로 학교·교육과정·이번 학기 과목을 찾는 중… (20초 안팎 걸릴 수 있어요)' : `AI가 ${escapeHtml(providerName())}로 학교·교육과정·이번 학기 과목을 정리하는 중… (10초 안팎)`) : '기본 교육과정을 준비하는 중…'}</span>`;
         const setStage = (stage) => {
           if (!hasKey()) return;
-          if (stage === 'noground') {
+          if (stage === 'quota') {
+            status.innerHTML = `<span class="status-line"><span class="spinner"></span> Google 검색 무료 한도에 걸려, 검색 없이 AI 지식으로 확인하는 중…</span>`;
+          } else if (stage === 'noground') {
             status.innerHTML = `<span class="status-line"><span class="spinner"></span> 검색 결과를 받지 못해 AI 지식으로 다시 확인하는 중…</span>`;
           }
         };
@@ -433,10 +393,13 @@ function stepSchool() {
           infoHost.innerHTML = schoolInfoSummaryHtml(info);
           try { infoHost.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
           status.hidden = false;
-          status.className = info.error ? 'status' : 'status ok';
-          status.innerHTML = `<span class="status-line">${info.source === 'ai'
-            ? (info.found ? `✅ 학교와 교육과정을 확인했어요${info.grounded ? ' (Google 검색)' : ''}. 아래 요약을 확인하고 다음으로 넘어가세요.` : '✅ 교육과정을 확인했어요. 학교는 확인되지 않아 입력한 이름으로 진행해요.')
-            : '📘 기본 교육과정으로 확인했어요. AI 키를 연결하면 학교·학기에 맞춰 다시 확인해요.'}</span>`;
+          const quotaFallback = info.reason === 'quota' || !!info.fallbackNotice;
+          status.className = (info.error || quotaFallback) ? 'status' : 'status ok';
+          status.innerHTML = `<span class="status-line">${quotaFallback
+            ? `ℹ️ ${escapeHtml(info.fallbackNotice || QUOTA_NOTICE)}`
+            : info.source === 'ai'
+              ? (info.found ? `✅ 학교와 교육과정을 확인했어요${info.grounded ? ' (Google 검색)' : info.searchSkipped ? ' (검색 한도로 검색 없이)' : ''}. 아래 요약을 확인하고 다음으로 넘어가세요.` : '✅ 교육과정을 확인했어요. 학교는 확인되지 않아 입력한 이름으로 진행해요.')
+              : '📘 기본 교육과정으로 확인했어요. AI 키를 연결하면 학교·학기에 맞춰 다시 확인해요.'}</span>`;
           draft.subjects = (info.subjects || []).map(s => s.id || subjectIdFromName(s.name)).filter(Boolean);
           draft.subjects = Array.from(new Set(draft.subjects));
           draft.subjectNames = {};
@@ -602,7 +565,7 @@ function stepSubjects() {
         </div>
       </div>
       <div class="onb-field"><label>교과서 · 출판사 <i class="field-hint">모르면 비워 둬도 돼요</i></label>
-        <p class="fine" style="margin:0 0 8px">교과서명과 출판사를 적으면 AI가 그 교과서의 <b>실제 목차(단원)</b>를 Google 검색으로 찾아 확인해요. 확인을 누르면 다음 화면에서 배울 단원만 골라요.</p>
+        <p class="fine" style="margin:0 0 8px">교과서명과 출판사를 적으면 AI가 그 교과서의 <b>실제 목차(단원)</b>를 ${canSearch() ? 'Google 검색으로 찾아 확인해요' : `AI가 아는 목차로 정리해요 (${escapeHtml(providerName())}는 검색 미지원)`}. 확인을 누르면 다음 화면에서 배울 단원만 골라요.</p>
         <div class="tb-grid" id="onbTbGrid">${tbHtml()}</div>
       </div>
       <p class="onb-preview" id="onbSubPreview"></p>`,
@@ -759,6 +722,8 @@ function drawCurriculum(list, status, note) {
   const built = draft.curriculums ? ids.filter(id => draft.curriculums[id]).length : 0;
   const ai = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].source === 'ai').length : 0;
   const grounded = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].grounded).length : 0;
+  const quotaIds = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].reason === 'quota') : [];
+  const quotaNames = quotaIds.map(id => draft.subjectNames[id] || subjectLabel(id)).join(', ');
   if (status) {
     if (built < ids.length) {
       status.hidden = false;
@@ -769,6 +734,10 @@ function drawCurriculum(list, status, note) {
       status.hidden = false;
       status.className = 'status ok';
       status.innerHTML = `<span class="status-line">✅ <b>${ai}개 과목</b>의 단원을 확인했어요${grounded ? ` (Google 검색 ${grounded}개)` : ''}${ai < ids.length ? ` · ${ids.length - ai}개는 기본 안내` : ''} — 배울 단원만 남겨 주세요.</span>`;
+    } else if (quotaIds.length) {
+      status.hidden = false;
+      status.className = 'status';
+      status.innerHTML = `<span class="status-line">ℹ️ ${escapeHtml(QUOTA_NOTICE)}</span>`;
     } else {
       status.hidden = false;
       status.className = 'status';
@@ -776,10 +745,14 @@ function drawCurriculum(list, status, note) {
     }
   }
   if (note) {
-    const failed = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].error) : [];
-    note.textContent = failed.length
-      ? `일부 과목(${failed.map(id => draft.subjectNames[id] || subjectLabel(id)).join(', ')})은 AI 확인에 실패해 기본 교육과정으로 채웠어요. 다시 확인해 보세요.`
-      : '단원을 누르면 선택/해제, ✕는 목록에서 지우기, 아래 칸은 직접 추가예요. 고른 단원만 홈 학습 경로에 쓰여요.';
+    const failed = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].error && draft.curriculums[id].reason !== 'quota') : [];
+    if (quotaIds.length && ai > 0) {
+      note.textContent = `일부 과목(${quotaNames})은 Google 검색 무료 한도에 걸려 기본 단원으로 먼저 채웠어요. 1분 뒤 위의 "AI로 다시 확인"을 누르면 새로 시도해요.`;
+    } else if (failed.length) {
+      note.textContent = `일부 과목(${failed.map(id => draft.subjectNames[id] || subjectLabel(id)).join(', ')})은 AI 확인에 실패해 기본 교육과정으로 채웠어요. 다시 확인해 보세요.`;
+    } else {
+      note.textContent = '단원을 누르면 선택/해제, ✕는 목록에서 지우기, 아래 칸은 직접 추가예요. 고른 단원만 홈 학습 경로에 쓰여요.';
+    }
   }
 }
 
@@ -835,7 +808,11 @@ async function runCurriculum({ list, status, note, retry }) {
         publisher: tb.publisher,
         onProgress: (stage) => {
           if (token !== curToken || !status) return;
-          if (stage === 'noground') {
+          if (stage === 'quota') {
+            status.hidden = false;
+            status.className = 'status';
+            status.innerHTML = `<span class="status-line"><span class="spinner"></span> Google 검색 무료 한도에 걸려, 검색 없이 단원을 만드는 중… <b>${escapeHtml(draft.subjectNames[id] || subjectLabel(id))}</b></span>`;
+          } else if (stage === 'noground') {
             status.hidden = false;
             status.className = 'status';
             status.innerHTML = `<span class="status-line"><span class="spinner"></span> 검색 결과가 없어 AI 지식으로 단원을 구성하는 중… <b>${escapeHtml(draft.subjectNames[id] || subjectLabel(id))}</b></span>`;
@@ -921,14 +898,17 @@ function collect() {
 
 async function next() {
   if (step === 0) {
-    const key = el$('#onbKeyInput') ? el('onbKeyInput').value.trim() : '';
+    const panelInput = el$('#provKeyInput', el('onbBody'));
+    const typed = panelInput ? panelInput.value.trim() : '';
+    const prov = getProvider();
+    const key = typed || getKeyFor(prov);
     if (!keyOk) {
       if (!key) {
         toast('API 키를 연결하거나, 아래 "키 없이 둘러보기"를 눌러 주세요.', 'err', 3200);
         return;
       }
-      setKey(key);
-      const status = el('onbKeyStatus');
+      setKeyFor(prov, key);
+      const status = el$('#provKeyStatus', el('onbBody')) || el('onbKeyStatus');
       const nextBtn = el('onbNext');
       if (status) {
         status.hidden = false; status.className = 'status';
@@ -938,13 +918,13 @@ async function next() {
       const label = nextBtn.textContent;
       nextBtn.innerHTML = '<span class="spinner"></span> 확인 중…';
       try {
-        const r = await connectTest(key, (m) => { if (status) status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${escapeHtml(m)}</span>`; });
+        const r = await connectTest(key, (m) => { if (status) status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${escapeHtml(m)}</span>`; }, prov);
         keyOk = true;
         if (status) { status.className = 'status ok'; status.innerHTML = `<span class="status-line">✅ 연결됨 · ${escapeHtml(r.model)}</span>`; }
         renderKeyState();
       } catch (e) {
         keyOk = false;
-        clearKey();
+        clearKeyFor(prov);
         renderKeyState();
         if (status) { status.className = 'status err'; status.innerHTML = `<span class="status-line">❌ ${escapeHtml(e.message || '연결하지 못했어요.')}</span>`; }
         nextBtn.disabled = false;

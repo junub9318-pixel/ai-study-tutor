@@ -4,12 +4,12 @@
 import {
   K, state, load, save, $, escapeHtml, renderRich, toSpeech, streamChat, tutorSystem,
   currentSubject, subjectKey, hasKey, openModal, toast, uid, materialContext, ApiError,
-} from './core.js?v=5e94bbb6';
+} from './core.js?v=618d59f9';
 import {
   speak, stopSpeaking, listen, sttSupported, ttsSupported, readImageFile, fileToMaterial,
   openMaterialsModal, scrollToBottom, toastCopy, setStatus, onView, openKeyModal,
-} from './ui.js?v=5e94bbb6';
-import { awardXP, bump, profile } from './gamify.js?v=5e94bbb6';
+} from './ui.js?v=618d59f9';
+import { awardXP, bump, profile } from './gamify.js?v=618d59f9';
 
 let chats = load(K.chats, {});
 let controller = null;
@@ -204,7 +204,7 @@ function openAttachMaterialPicker() {
         try {
           const mat = await fileToMaterial(f);
           if (mat && mat.kind !== 'img') {
-            const { addMaterial } = await import('./ui.js?v=5e94bbb6');
+            const { addMaterial } = await import('./ui.js?v=618d59f9');
             addMaterial(mat);
             selected.add(mat.id);
           }
@@ -253,7 +253,7 @@ function buildContents(history, parts) {
 
 async function sendMessage(text, images, materials, { silentUser = false } = {}) {
   if (state.busy) return;
-  if (!hasKey()) { toast('먼저 Gemini API 키를 연결해 주세요.', 'err'); openKeyModal(); return; }
+  if (!hasKey()) { toast('먼저 AI 키(Gemini · Groq · OpenRouter)를 연결해 주세요.', 'err'); openKeyModal(); return; }
   const question = (text || '').trim();
   if (!question && !images.length) { toast('질문을 입력하거나 사진을 첨부해 주세요.', 'err'); return; }
 
@@ -503,7 +503,7 @@ export function initTutor() {
     for (const f of Array.from(e.target.files || [])) {
       try {
         const mat = await fileToMaterial(f);
-        if (mat) { const { addMaterial } = await import('./ui.js?v=5e94bbb6'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
+        if (mat) { const { addMaterial } = await import('./ui.js?v=618d59f9'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
       } catch (err) { toast(err.message, 'err'); }
     }
     e.target.value = '';

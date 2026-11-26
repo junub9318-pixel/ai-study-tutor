@@ -4,22 +4,23 @@
 import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
+  providerInfo, getProvider, getKeyFor, clearKeyFor, canSearch,
   saveSettings, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=5e94bbb6';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=5e94bbb6';
-import { openDifficultyPrompt } from './difficulty.js?v=5e94bbb6';
-import { gradesFor, ageForGrade, subjectIcon, buildCurriculum } from './curriculum.js?v=5e94bbb6';
+} from './core.js?v=618d59f9';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported, providerName } from './ui.js?v=618d59f9';
+import { openDifficultyPrompt } from './difficulty.js?v=618d59f9';
+import { gradesFor, ageForGrade, subjectIcon, buildCurriculum, QUOTA_NOTICE } from './curriculum.js?v=618d59f9';
 import {
   CURRICULUM_OPTIONS, curriculumOptions, getTextbook, setTextbook, normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=5e94bbb6';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=5e94bbb6';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula, applyCurriculum } from './course.js?v=5e94bbb6';
+} from './textbook.js?v=618d59f9';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=618d59f9';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula, applyCurriculum } from './course.js?v=618d59f9';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=5e94bbb6';
-import { openOnboarding } from './onboarding.js?v=5e94bbb6';
-import { createTimerWheel, clampMinutes } from './routine.js?v=5e94bbb6';
+} from './sync.js?v=618d59f9';
+import { openOnboarding } from './onboarding.js?v=618d59f9';
+import { createTimerWheel, clampMinutes } from './routine.js?v=618d59f9';
 
 const el = (id) => document.getElementById(id);
 
@@ -87,7 +88,9 @@ async function runCurriculumRefresh(host, subjIds, { silent = false } = {}) {
       box.className = 'status ok';
       box.innerHTML = ai > 0
         ? `<span>✅ ${list.length}개 과목 교육과정을 새로 맞췄어요 · AI 확인 ${ai}개${ai < list.length ? ` · 기본 ${list.length - ai}개` : ''}</span>`
-        : `<span>📘 ${list.length}개 과목을 기본 교육과정으로 갱신했어요. Gemini 키를 연결하면 학교·학년에 맞춰 AI가 다시 확인해 줘요.</span>`;
+        : (list.some(c => c && c.reason === 'quota')
+          ? `<span>ℹ️ ${escapeHtml(QUOTA_NOTICE)}</span>`
+          : `<span>📘 ${list.length}개 과목을 기본 교육과정으로 갱신했어요. AI 키를 연결하면 학교·학년에 맞춰 AI가 다시 확인해 줘요.</span>`);
     }
     if (!silent) toast(ai > 0 ? 'AI가 교육과정을 다시 확인했어요' : '기본 교육과정으로 갱신했어요', ai > 0 ? 'xp' : 'info', 3000);
     return map;
@@ -123,7 +126,7 @@ function openTextbookEditor(subjectId) {
   const modal = openModal(`
     <div class="modal-head"><h2>${escapeHtml(c.label)} · 교과서와 단원</h2><button class="icon-btn" data-close type="button">✕</button></div>
     <div class="modal-body">
-      <p class="hint">교과서명과 출판사를 넣고 <b>AI로 교과서 단원 찾기</b>를 누르면 Google 검색으로 그 교과서 목차를 확인해요. 단원을 누르면 선택/해제, ✕는 지우기, 맨 아래 칸은 직접 추가예요.</p>
+      <p class="hint">교과서명과 출판사를 넣고 <b>AI로 교과서 단원 찾기</b>를 누르면 ${canSearch() ? 'Google 검색으로 그 교과서 목차를 확인해요' : `지금 제공자(${escapeHtml(providerName())})는 검색이 없어 AI가 아는 목차로 정리해요`}. 단원을 누르면 선택/해제, ✕는 지우기, 맨 아래 칸은 직접 추가예요.</p>
       <div class="tb-inputs tb-inputs-col">
         <input class="onb-input" id="tbName" maxlength="40" placeholder="교과서명 (예: 공통수학 1)" value="${escapeHtml(st.textbook)}" />
         <input class="onb-input" id="tbPub" maxlength="20" placeholder="출판사 (예: 비상교육)" value="${escapeHtml(st.publisher)}" />
@@ -164,7 +167,7 @@ function openTextbookEditor(subjectId) {
     btn.textContent = '찾는 중…';
     status.hidden = false;
     status.className = 'status';
-    status.innerHTML = `<span class="status-line"><span class="spinner"></span> Google 검색으로 <b>${escapeHtml(st.textbook || '교과서')}</b> 목차를 확인하는 중… (20초 안팍 걸릴 수 있어요)</span>`;
+    status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${canSearch() ? 'Google 검색으로' : 'AI가 아는 정보로'} <b>${escapeHtml(st.textbook || '교과서')}</b> 목차를 확인하는 중… (${canSearch() ? '20' : '10'}초 안팍 걸릴 수 있어요)</span>`;
     try {
       const cur = await buildCurriculum(subjectId, {
         learner: Object.assign({}, setup, { textbook: st.textbook, publisher: st.publisher }),
@@ -172,7 +175,8 @@ function openTextbookEditor(subjectId) {
         textbook: st.textbook,
         publisher: st.publisher,
         onProgress: (stage) => {
-          if (stage === 'noground') status.innerHTML = '<span class="status-line"><span class="spinner"></span> 검색 결과가 없어 AI 지식으로 단원을 구성하는 중…</span>';
+          if (stage === 'quota') status.innerHTML = '<span class="status-line"><span class="spinner"></span> Google 검색 무료 한도에 걸려, 검색 없이 단원을 만드는 중…</span>';
+          else if (stage === 'noground') status.innerHTML = '<span class="status-line"><span class="spinner"></span> 검색 결과가 없어 AI 지식으로 단원을 구성하는 중…</span>';
         },
       });
       st.curriculumName = cur.curriculumName || st.curriculumName;
@@ -192,7 +196,7 @@ function openTextbookEditor(subjectId) {
       status.className = cur.source === 'ai' ? 'status ok' : 'status';
       status.innerHTML = cur.source === 'ai'
         ? `<span class="status-line">✅ ${escapeHtml(st.textbook || '교과서')} 단원 <b>${normalizeTopics(st.topics).length}개</b>를 찾았어요${cur.confirmed ? ' (교과서 목차 확인)' : ' (검색 결과가 없어 교육과정 기준)'}. 배울 단원만 남겨 주세요.</span>`
-        : `<span class="status-line">📘 기본 교육과정 단원으로 채웠어요${cur.error ? ' · ' + escapeHtml(cur.error) : ''}.</span>`;
+        : `<span class="status-line">${cur.reason === 'quota' ? 'ℹ️ ' + escapeHtml(QUOTA_NOTICE) : '📘 기본 교육과정 단원으로 채웠어요' + (cur.error ? ' · ' + escapeHtml(cur.error) : '') + '.'}</span>`;
     } catch (e) {
       status.className = 'status err';
       status.innerHTML = `<span class="status-line">❌ ${escapeHtml(e.message || '단원을 찾지 못했어요.')}</span>`;
@@ -235,6 +239,7 @@ export function renderSettings() {
 
   const dd = setup.examDate ? dday(setup.examDate) : null;
   const keyOn = hasKey();
+  const prov = providerInfo(getProvider());
   const tier = tierFor(weeklyXP());
 
   host.innerHTML = `
@@ -361,15 +366,17 @@ export function renderSettings() {
       </div>
     </div>
 
-    <!-- API 키 -->
+    <!-- AI 연결 -->
     <div class="panel">
-      <div class="panel-head tight"><b>Gemini API 키</b>
+      <div class="panel-head tight"><b>AI 연결 · Gemini / Groq / OpenRouter</b>
         <span class="set-badge ${keyOn ? 'ok' : 'off'}">${keyOn ? '연결됨' : '미연결'}</span>
       </div>
-      <p class="set-note" style="margin-top:0">사용 모델: <b>${keyOn ? escapeHtml(getModel() || '자동 선택') : '—'}</b><br/>
-        키는 이 기기 브라우저(localStorage)에만 저장되고 서버로 보내지 않아요.</p>
+      <p class="set-note" style="margin-top:0">지금 제공자: <b>${prov.icon} ${escapeHtml(prov.label)}</b><br/>
+        사용 모델: <b>${keyOn ? escapeHtml(getModel() || '자동 선택') : '—'}</b><br/>
+        ${prov.search ? 'Google 검색으로 학교·교과서 목차를 확인해요.' : 'Google 검색 미지원 — 학교·교과서는 AI 지식으로 확인해요.'}<br/>
+        키는 이 기기 브라우저(localStorage)에 제공자별로 저장되고 서버로 보내지 않아요.</p>
       <div class="row tight" style="margin-top:10px">
-        <button class="primary small" id="setKey" type="button">${keyOn ? '키 변경 · 연결 테스트' : '키 연결하기'}</button>
+        <button class="primary small" id="setKey" type="button">${keyOn ? '제공자 · 키 변경' : '제공자 고르고 키 연결'}</button>
         <button class="ghost-btn small" id="setKeyTest" type="button">연결 테스트</button>
         ${keyOn ? '<button class="ghost-btn small danger" id="setKeyDel" type="button">키 삭제</button>' : ''}
       </div>
@@ -465,10 +472,10 @@ export function renderSettings() {
       <div class="panel-head tight"><b>개인정보 · 앱 정보</b></div>
       <p class="set-note" style="margin-top:0">
         • 학습 기록·대화·API 키는 이 기기의 브라우저 저장소(localStorage)에만 보관되며, Pickle이나 다른 서버로 전송되지 않아요.<br/>
-        • AI 요청은 입력한 내용이 Google Gemini API로만 전달됩니다.<br/>
+        • AI 요청은 입력한 내용(질문·사진)이 지금 고른 제공자(Gemini · Groq · OpenRouter) API로만 전달됩니다.<br/>
         • Google Drive 백업은 내 계정의 앱 전용 폴더(appDataFolder)에만 저장되고, API 키는 백업에서 제외됩니다.<br/>
         • 공용 PC에서는 사용 후 API 키를 삭제해 주세요.<br/>
-        • 앱 버전 3.0 · GitHub Pages 정적 배포
+        • 앱 버전 3.1 · GitHub Pages 정적 배포
       </p>
     </div>`;
 
@@ -560,7 +567,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=5e94bbb6').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=618d59f9').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
@@ -570,9 +577,9 @@ function bindSettings(host) {
     box.className = 'status';
     box.innerHTML = '<span class="spinner"></span> 연결을 확인하는 중…';
     try {
-      const r = await connectTest(getKey(), (m) => { box.innerHTML = `<span class="spinner"></span> ${escapeHtml(m)}`; });
+      const r = await connectTest(getKey(), (m) => { box.innerHTML = `<span class="spinner"></span> ${escapeHtml(m)}`; }, getProvider());
       box.className = 'status ok';
-      box.innerHTML = `✅ 연결됨 · 사용 모델 <b>${escapeHtml(r.model)}</b>`;
+      box.innerHTML = `✅ ${escapeHtml(providerName())} 연결됨 · 사용 모델 <b>${escapeHtml(r.model)}</b>`;
       renderKeyState();
     } catch (e) {
       box.className = 'status err';
@@ -580,11 +587,11 @@ function bindSettings(host) {
     }
   });
   host.querySelector('#setKeyDel')?.addEventListener('click', () => {
-    if (!confirm('이 기기에 저장된 API 키를 삭제할까요?')) return;
-    clearKey();
+    if (!confirm(`${providerName()} 키를 이 기기에서 삭제할까요?`)) return;
+    clearKeyFor(getProvider());
     renderKeyState();
     renderSettings();
-    toast('API 키를 삭제했어요');
+    toast(`${providerName()} 키를 삭제했어요`);
   });
 
   host.querySelector('#setDriveSetup')?.addEventListener('click', driveSetupModal);

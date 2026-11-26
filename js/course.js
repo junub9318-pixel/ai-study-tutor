@@ -5,15 +5,15 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=5e94bbb6';
-import { showView, openKeyModal } from './ui.js?v=5e94bbb6';
-import { openDifficultyPrompt } from './difficulty.js?v=5e94bbb6';
+} from './core.js?v=618d59f9';
+import { showView, openKeyModal } from './ui.js?v=618d59f9';
+import { openDifficultyPrompt } from './difficulty.js?v=618d59f9';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=5e94bbb6';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=5e94bbb6';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=5e94bbb6';
-import { getTextbook, normalizeTopics } from './textbook.js?v=5e94bbb6';
+} from './gamify.js?v=618d59f9';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=618d59f9';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=618d59f9';
+import { getTextbook, normalizeTopics } from './textbook.js?v=618d59f9';
 
 const el = (id) => document.getElementById(id);
 
@@ -592,7 +592,8 @@ export async function generateCurriculum() {
   renderCourse();
   toast(cur.source === 'ai'
     ? 'AI가 교육과정에 맞춰 단원을 다시 짰어요'
-    : 'API 키가 없어 기본 교육과정으로 단원을 채웠어요', cur.source === 'ai' ? 'xp' : 'info', 3000);
+    : (cur.reason === 'quota' ? (cur.fallbackNotice || '무료 한도에 걸려 기본 단원으로 먼저 채웠어요.')
+      : 'API 키가 없어 기본 교육과정으로 단원을 채웠어요'), cur.source === 'ai' ? 'xp' : 'info', 3400);
   return cur;
 }
 
