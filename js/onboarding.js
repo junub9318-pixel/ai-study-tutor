@@ -5,10 +5,10 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   saveMaterials, currentSubject,
-} from './core.js?v=e392b533';
-import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=e392b533';
-import { getCourse, renderCourse, renderTopBar } from './course.js?v=e392b533';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=e392b533';
+} from './core.js?v=7639b443';
+import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=7639b443';
+import { getCourse, renderCourse, renderTopBar } from './course.js?v=7639b443';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=7639b443';
 
 const el = (id) => document.getElementById(id);
 let step = 0;
@@ -382,7 +382,7 @@ function stepMaterials() {
         for (const f of Array.from(input.files || [])) {
           try {
             if (/^image\//.test(f.type)) {
-              const { readImageFile } = await import('./ui.js?v=e392b533');
+              const { readImageFile } = await import('./ui.js?v=7639b443');
               const img = await readImageFile(f);
               addMaterial({ id: 'mat' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name || '사진', kind: 'img', chars: 0, text: '', dataUrl: img.dataUrl, createdAt: Date.now() });
             } else {

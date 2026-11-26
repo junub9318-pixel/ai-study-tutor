@@ -3,22 +3,22 @@
    ========================================================= */
 import {
   K, state, hasKey, save, $, $$, openModal, escapeHtml, toast, getSetup,
-} from './core.js?v=e392b533';
+} from './core.js?v=7639b443';
 import {
   initTheme, initTabs, initSubject, initKey, showView, openMaterialsModal,
   renderMaterialCount, onView, renderKeyState,
-} from './ui.js?v=e392b533';
-import { renderHeaderChips } from './gamify.js?v=e392b533';
-import { initTutor } from './tutor.js?v=e392b533';
-import { initQuiz } from './quiz.js?v=e392b533';
-import { initPlan } from './plan.js?v=e392b533';
-import { initCards } from './cards.js?v=e392b533';
-import { initAudio } from './audio.js?v=e392b533';
-import { initSim } from './sim.js?v=e392b533';
-import { initLeague, handleFriendLink } from './league.js?v=e392b533';
-import { initCourse, renderCourse } from './course.js?v=e392b533';
-import { initSettings } from './settings.js?v=e392b533';
-import { initOnboarding, openOnboarding } from './onboarding.js?v=e392b533';
+} from './ui.js?v=7639b443';
+import { renderHeaderChips } from './gamify.js?v=7639b443';
+import { initTutor } from './tutor.js?v=7639b443';
+import { initQuiz } from './quiz.js?v=7639b443';
+import { initPlan } from './plan.js?v=7639b443';
+import { initCards } from './cards.js?v=7639b443';
+import { initAudio } from './audio.js?v=7639b443';
+import { initSim } from './sim.js?v=7639b443';
+import { initLeague, handleFriendLink } from './league.js?v=7639b443';
+import { initCourse, renderCourse } from './course.js?v=7639b443';
+import { initSettings } from './settings.js?v=7639b443';
+import { initOnboarding, openOnboarding } from './onboarding.js?v=7639b443';
 
 /* ---------------- 개발용 오류 표시 (?debug=1) ---------------- */
 window.__errors = [];
@@ -68,7 +68,6 @@ function boot() {
   document.getElementById('streakChipBtn')?.addEventListener('click', () => showView('league'));
 
   document.addEventListener('app:materials', renderMaterialCount);
-  document.addEventListener('app:key', renderKeyState);
   document.addEventListener('app:setup', () => { renderCourse(); });
 
   const started = openOnboarding(false);

@@ -5,15 +5,15 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings,
-} from './core.js?v=e392b533';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=e392b533';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=e392b533';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses } from './course.js?v=e392b533';
+} from './core.js?v=7639b443';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=7639b443';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=7639b443';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses } from './course.js?v=7639b443';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=e392b533';
-import { openOnboarding } from './onboarding.js?v=e392b533';
+} from './sync.js?v=7639b443';
+import { openOnboarding } from './onboarding.js?v=7639b443';
 
 const el = (id) => document.getElementById(id);
 
@@ -292,7 +292,7 @@ function bindSettings(host) {
   }));
 
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=e392b533').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=7639b443').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
