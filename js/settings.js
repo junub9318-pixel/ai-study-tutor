@@ -5,17 +5,17 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=0f19bb7e';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=0f19bb7e';
-import { openDifficultyPrompt } from './difficulty.js?v=0f19bb7e';
-import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=0f19bb7e';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=0f19bb7e';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=0f19bb7e';
+} from './core.js?v=4203a19d';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=4203a19d';
+import { openDifficultyPrompt } from './difficulty.js?v=4203a19d';
+import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=4203a19d';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=4203a19d';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=4203a19d';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=0f19bb7e';
-import { openOnboarding } from './onboarding.js?v=0f19bb7e';
+} from './sync.js?v=4203a19d';
+import { openOnboarding } from './onboarding.js?v=4203a19d';
 
 const el = (id) => document.getElementById(id);
 
@@ -124,7 +124,7 @@ export function renderSettings() {
       <div class="form-grid" style="margin-top:6px">
         <label class="field"><span>국가</span>
           <select id="setCountry">
-            ${['대한민국', '미국', '일본', '중국', '베트남', '기타'].map(c => `<option ${setup.country === c ? 'selected' : ''}>${c}</option>`).join('')}
+            ${['대한민국', '미국', '일본', '중국', '베트남', '영국', '호주', '캐나다', '기타'].map(c => `<option ${setup.country === c ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
         </label>
         <label class="field"><span>학교급</span>
@@ -420,7 +420,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=0f19bb7e').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=4203a19d').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
