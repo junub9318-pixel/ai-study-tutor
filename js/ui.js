@@ -5,8 +5,8 @@ import {
   SUBJECTS, K, state, load, save, removeKey, currentSubject, setSubject,
   $, $$, el, escapeHtml, fmt, toast, openModal, hasKey, getKey, setKey, clearKey,
   connectTest, getModel, listModels, ApiError, saveSettings, saveMaterials, uid, dayKey,
-} from './core.js?v=7639b443';
-import { renderHeaderChips } from './gamify.js?v=7639b443';
+} from './core.js?v=9953f6e4';
+import { renderHeaderChips } from './gamify.js?v=9953f6e4';
 
 /* ---------------- theme ---------------- */
 export function initTheme() {
@@ -17,7 +17,7 @@ export function initTheme() {
 }
 function updateThemeIcon(theme) {
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#f6f4ef');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#ffffff');
 }
 
 /* ---------------- views ---------------- */

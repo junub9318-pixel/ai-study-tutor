@@ -10,7 +10,14 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-<link rel="stylesheet" href="style.css?v=7639b443" />
+<link rel="stylesheet" href="style.css?v=9953f6e4" />
+<script>
+/* 저장된 테마를 첫 화면 전에 바로 적용(깜빡임 방지) */
+try {
+  var _t = localStorage.getItem('aitutor.v1.theme');
+  if (_t) { var _v = JSON.parse(_t); if (_v === 'light' || _v === 'dark') document.documentElement.setAttribute('data-theme', _v); }
+} catch (e) {}
+</script>
 </head>
 <body>
 
@@ -369,15 +376,12 @@
         <h2 id="tierName">브론즈 리그</h2>
         <p class="sub" id="tierSub">이번 주 0 XP · 실버까지 100 XP</p>
         <div class="bar big"><i id="tierBar" style="width:0%"></i></div>
-        <div class="league-toggles">
-          <label class="switch"><input type="checkbox" id="showBots" checked /><span></span> AI 스터디 메이트 포함</label>
-        </div>
       </div>
 
       <div class="panel">
         <div class="panel-head"><b>이번 주 순위</b><span class="week-label" id="weekLabel"></span></div>
         <ol class="rank-list" id="rankList"></ol>
-        <p class="fine">순위는 이번 주(월~일) 획득 XP 기준이에요. 주가 바뀌면 리그가 새로 시작됩니다.</p>
+        <p class="fine">순위는 이번 주(월~일) 획득 XP 기준이에요. 나와 내가 추가한 친구만 표시되고, 주가 바뀌면 리그가 새로 시작됩니다.</p>
       </div>
 
       <div class="panel">
@@ -468,6 +472,6 @@
 
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-<script type="module" src="js/app.js?v=7639b443"></script>
+<script type="module" src="js/app.js?v=9953f6e4"></script>
 </body>
 </html>

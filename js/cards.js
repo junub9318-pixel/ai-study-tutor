@@ -3,9 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, renderRich, generateJSON, CARDS_SCHEMA,
-  currentSubject, materialContext, uid, toast, learnerContext,} from './core.js?v=7639b443';
-import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=7639b443';
-import { awardXP, bump } from './gamify.js?v=7639b443';
+  currentSubject, materialContext, uid, toast, learnerContext,} from './core.js?v=9953f6e4';
+import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=9953f6e4';
+import { awardXP, bump } from './gamify.js?v=9953f6e4';
 
 const STATUS = {
   unknown: { label: '모르겠음', icon: '❓', cls: 's0', xp: 2 },
@@ -198,8 +198,8 @@ function finishDeck() {
       </div>
       <div class="weak-list" style="justify-content:center">
         ${stats.unknown ? `<span class="weak-tag">❓ 모르겠음 ${stats.unknown}</span>` : ''}
-        ${stats.unsure ? `<span class="weak-tag" style="background:rgba(246,183,86,.12);border-color:rgba(246,183,86,.35);color:#ffd08a">🤔 헷갈림 ${stats.unsure}</span>` : ''}
-        ${stats.known ? `<span class="weak-tag" style="background:rgba(70,209,138,.12);border-color:rgba(70,209,138,.35);color:#9aebbd">✨ 완벽 ${stats.known}</span>` : ''}
+        ${stats.unsure ? `<span class="weak-tag" style="background:color-mix(in srgb, var(--warn) 12%, transparent);border-color:color-mix(in srgb, var(--warn) 35%, transparent);color:var(--warn-ink)">🤔 헷갈림 ${stats.unsure}</span>` : ''}
+        ${stats.known ? `<span class="weak-tag" style="background:color-mix(in srgb, var(--ok) 12%, transparent);border-color:color-mix(in srgb, var(--ok) 35%, transparent);color:var(--ok-ink)">✨ 완벽 ${stats.known}</span>` : ''}
       </div>
       <div class="row" style="justify-content:center">
         ${deck.cards.some(c => c.status !== 'known') ? `<button class="primary" id="retryWeak" type="button">모르는 카드만 다시</button>` : ''}

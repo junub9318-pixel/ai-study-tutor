@@ -1,21 +1,23 @@
 /* =========================================================
-   onboarding.js — 7단계 시작 마법사
+   onboarding.js — 8단계 시작 마법사
    ========================================================= */
 import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   saveMaterials, currentSubject,
-} from './core.js?v=7639b443';
-import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=7639b443';
-import { getCourse, renderCourse, renderTopBar } from './course.js?v=7639b443';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=7639b443';
+} from './core.js?v=9953f6e4';
+import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=9953f6e4';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum } from './course.js?v=9953f6e4';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=9953f6e4';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=9953f6e4';
 
 const el = (id) => document.getElementById(id);
 let step = 0;
 let draft = null;
 let keyOk = false;
+let curToken = 0;
 
-const TOTAL = 7;
+const TOTAL = 8;
 const el$ = (sel, root = document) => root.querySelector(sel);
 
 function defaults() {
@@ -43,6 +45,8 @@ export function openOnboarding(force = false) {
   if (!Array.isArray(draft.subjects) || !draft.subjects.length) draft.subjects = defaults().subjects.slice();
   step = 0;
   keyOk = hasKey();
+  curToken++;
+  draft.curriculums = null;
   el('onboarding').hidden = false;
   render();
   return true;
@@ -58,14 +62,17 @@ function setStepChrome() {
   el('onbFill').style.width = ((step + 1) / TOTAL * 100) + '%';
   el('onbStep').textContent = `${step + 1} / ${TOTAL}`;
   el('onbBack').disabled = step === 0;
-  el('onbNext').textContent = step === TOTAL - 1 ? '학습 시작하기' : (step === 0 && !keyOk) ? '키 연결하기' : '다음';
-  el('onbSkip').textContent = step === 0 ? '키 없이 둘러보기' : '나중에 하기';
+  if (step === TOTAL - 1) el('onbNext').textContent = '학습 시작하기';
+  else if (step === TOTAL - 2) el('onbNext').textContent = '이 교육과정으로 계속';
+  else if (step === 0 && !keyOk) el('onbNext').textContent = '키 연결하기';
+  else el('onbNext').textContent = '다음';
+  el('onbSkip').textContent = step === 0 ? '키 없이 둘러보기' : (step === TOTAL - 2 ? '기본 교육과정으로 시작' : '나중에 하기');
 }
 
 function render() {
   setStepChrome();
   const body = el('onbBody');
-  const def = [stepKey, stepBasics, stepSubjects, stepLevel, stepRoutine, stepMaterials, stepSync][step]();
+  const def = [stepKey, stepBasics, stepSubjects, stepLevel, stepRoutine, stepMaterials, stepCurriculum, stepSync][step]();
   body.innerHTML = def.html();
   body.scrollTop = 0;
   def.bind(body);
@@ -382,7 +389,7 @@ function stepMaterials() {
         for (const f of Array.from(input.files || [])) {
           try {
             if (/^image\//.test(f.type)) {
-              const { readImageFile } = await import('./ui.js?v=7639b443');
+              const { readImageFile } = await import('./ui.js?v=9953f6e4');
               const img = await readImageFile(f);
               addMaterial({ id: 'mat' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name || '사진', kind: 'img', chars: 0, text: '', dataUrl: img.dataUrl, createdAt: Date.now() });
             } else {
@@ -405,12 +412,123 @@ function stepMaterials() {
 }
 function fmtChars(n) { return n ? `${Number(n).toLocaleString()}자` : '이미지'; }
 
-/* ---------------- step 7 · google sync ---------------- */
+/* ---------------- step 7 · curriculum check ---------------- */
+function curCardHtml(id, cur) {
+  const badge = cur.source === 'ai'
+    ? '<span class="cur-badge">AI 확인</span>'
+    : '<span class="cur-badge basic">기본</span>';
+  const topics = (cur.topics || []).map((t, i) => `
+    <li><span class="n">${i + 1}</span><div><b>${escapeHtml(t.title || '')}</b>${t.focus ? `<span>${escapeHtml(t.focus)}</span>` : ''}</div></li>`).join('');
+  return `<div class="cur-card" data-cur="${escapeHtml(id)}">
+    <div class="cur-head">
+      <span class="cur-ico">${subjectIcon(id)}</span>
+      <div class="cur-title"><b>${escapeHtml(subjectLabel(id))}</b><small>${escapeHtml(cur.unitTitle || '')}</small></div>
+      ${badge}
+    </div>
+    <ol class="cur-topics">${topics}</ol>
+    ${cur.curriculumName ? `<p class="cur-src">${escapeHtml(cur.curriculumName)}</p>` : ''}
+  </div>`;
+}
+
+function curLoadingHtml(id) {
+  return `<div class="cur-card loading" data-cur="${escapeHtml(id)}">
+    <div class="cur-head">
+      <span class="cur-ico">${subjectIcon(id)}</span>
+      <div class="cur-title"><b>${escapeHtml(subjectLabel(id))}</b><small>교육과정을 확인하는 중…</small></div>
+      <span class="spinner"></span>
+    </div>
+    <div class="cur-skel"><i></i><i></i><i></i></div>
+  </div>`;
+}
+
+function drawCurriculum(list, status, note) {
+  const ids = draft.subjects.slice();
+  if (!list) return;
+  list.innerHTML = ids.map(id => {
+    const cur = draft.curriculums && draft.curriculums[id];
+    return cur ? curCardHtml(id, cur) : curLoadingHtml(id);
+  }).join('');
+  const built = draft.curriculums ? ids.filter(id => draft.curriculums[id]).length : 0;
+  const ai = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].source === 'ai').length : 0;
+  if (status) {
+    if (built < ids.length) {
+      status.hidden = false;
+      status.className = 'status';
+      status.innerHTML = `<span class="spinner"></span> ${hasKey() ? 'AI가 교육과정을 확인하는 중…' : '기본 교육과정을 준비하는 중…'} <b>${built} / ${ids.length}</b>`;
+    } else if (ai > 0) {
+      status.hidden = false;
+      status.className = 'status ok';
+      status.innerHTML = `✅ <b>${ai}개 과목</b>의 교육과정을 AI로 확인했어요${ai < ids.length ? ` · ${ids.length - ai}개는 기본 안내` : ''}`;
+    } else {
+      status.hidden = false;
+      status.className = 'status';
+      status.innerHTML = '📘 지금은 <b>기본 교육과정 안내</b>로 채웠어요. AI 키를 연결하면 학교·학년에 맞춰 바로 다시 확인해요.';
+    }
+  }
+  if (note) {
+    const failed = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].error) : [];
+    note.textContent = failed.length
+      ? `일부 과목(${failed.map(id => subjectLabel(id)).join(', ')})은 AI 확인에 실패해 기본 교육과정으로 채웠어요. 다시 확인해 보세요.`
+      : '확인한 단원은 시작한 뒤에도 설정 → AI 교육과정에서 언제든 다시 볼 수 있어요.';
+  }
+}
+
+function stepCurriculum() {
+  const learnerLine = () => `${draft.country || '대한민국'} · ${[draft.level, draft.grade].filter(Boolean).join(' ')}${draft.school ? ' · ' + escapeHtml(draft.school) : ''}`;
+  return {
+    html: () => `
+      <p class="onb-eyebrow">STEP 7 · 교육과정 확인</p>
+      <h2 class="onb-title">시작하기 전에,<br/>배울 단원부터 볼게요</h2>
+      <p class="onb-desc">${learnerLine()} 기준으로 과목별 교육과정(단원·핵심 주제)을 확인했어요. 구성이 다르면 다시 확인하거나, 시작한 뒤 설정에서 바꿀 수 있어요.</p>
+      <div class="status" id="onbCurStatus" hidden></div>
+      <div class="onb-cur-list" id="onbCurList"></div>
+      <div class="row tight" style="margin-top:14px">
+        <button class="ghost-btn small" id="onbCurRetry" type="button">🔄 AI로 다시 확인</button>
+        ${hasKey() ? '' : '<button class="ghost-btn small" id="onbCurKey" type="button">🔑 AI 키 연결</button>'}
+      </div>
+      <p class="fine" id="onbCurNote"></p>`,
+    bind: (body) => {
+      const list = el$('#onbCurList', body);
+      const status = el$('#onbCurStatus', body);
+      const note = el$('#onbCurNote', body);
+      const retry = el$('#onbCurRetry', body);
+      const ready = draft.curriculums && draft.subjects.every(id => draft.curriculums[id]);
+      retry?.addEventListener('click', () => {
+        if (!hasKey()) { toast('API 키를 연결하면 AI가 학교·학년에 맞춰 다시 확인해요.', 'info', 3000); }
+        runCurriculum({ list, status, note, retry });
+      });
+      el$('#onbCurKey', body)?.addEventListener('click', () => { step = 0; render(); });
+      if (ready) drawCurriculum(list, status, note);
+      else runCurriculum({ list, status, note, retry });
+    },
+  };
+}
+
+async function runCurriculum({ list, status, note, retry }) {
+  const token = ++curToken;
+  const ids = draft.subjects.slice();
+  draft.curriculums = {};
+  if (retry) retry.disabled = true;
+  drawCurriculum(list, status, note);
+  try {
+    for (const id of ids) {
+      if (token !== curToken || !el('onbCurList')) return;
+      const cur = await buildCurriculum(id, { learner: draft, materials: state.materials });
+      if (token !== curToken) return;
+      draft.curriculums[id] = cur;
+      drawCurriculum(el('onbCurList'), el('onbCurStatus'), el('onbCurNote'));
+    }
+  } finally {
+    if (token === curToken && retry) retry.disabled = false;
+  }
+}
+
+/* ---------------- step 8 · google sync ---------------- */
 function stepSync() {
   const sync = getSync();
   return {
     html: () => `
-      <p class="onb-eyebrow">STEP 7 · 저장</p>
+      <p class="onb-eyebrow">STEP 8 · 저장</p>
       <h2 class="onb-title">기기를 바꿔도<br/>이어서 공부하려면</h2>
       <p class="onb-desc">지금도 모든 기록은 이 기기에 저장돼요. Google 계정을 연결하면 내 Drive의 앱 전용 폴더에 백업되어, 다른 기기에서도 같은 기록으로 이어갈 수 있어요.</p>
       <div class="onb-google">
@@ -513,6 +631,7 @@ function skip() {
 export async function finish(skipped = false) {
   collect();
   if (!Array.isArray(draft.subjects) || !draft.subjects.length) draft.subjects = defaults().subjects.slice();
+  const map = draft.curriculums || {};
   const patch = {
     country: draft.country,
     level: draft.level,
@@ -526,11 +645,16 @@ export async function finish(skipped = false) {
     dailyMinutes: Number(draft.dailyMinutes) || 60,
     noMaterial: !!draft.noMaterial,
     done: true,
+    curriculumAt: Date.now(),
     createdAt: (getSetup() || {}).createdAt || Date.now(),
   };
   saveSetup(patch);
   if (!draft.subjects.includes(state.subject)) setSubject(draft.subjects[0]);
-  draft.subjects.forEach(id => getCourse(id));
+  draft.subjects.forEach(id => {
+    const cur = map[id];
+    if (cur && cur.topics && cur.topics.length) applyCurriculum(id, cur);
+    else applyCurriculum(id, basicCurriculum(id));
+  });
   el('onboarding').hidden = true;
   renderTopBar();
   renderCourse();

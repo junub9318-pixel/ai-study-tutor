@@ -68,7 +68,7 @@ export const state = {
   materials: load(K.materials, []),
   pending: { images: [], materials: [] },
   settings: Object.assign({
-    mode: 'socratic', autoSpeak: false, ttsRate: 1, showBots: true, dailyGoal: 50,
+    mode: 'socratic', autoSpeak: false, ttsRate: 1, dailyGoal: 50,
   }, load(K.settings, {})),
   modelCache: load(K.models, []),
   busy: false,
@@ -111,8 +111,7 @@ export function learnerLabel() {
   if (!s.level && !s.grade) return '고등학생';
   return `${s.country || '대한민국'} ${s.level || ''} ${s.grade || ''}`.trim();
 }
-export function learnerContext() {
-  const s = getSetup();
+export function learnerContextFrom(s) {
   if (!s) return '[학생 정보] 대한민국 고등학교 1학년. 한국 교육과정 기준으로 설명한다.';
   const dd = s.examDate ? dday(s.examDate) : null;
   const lines = [
@@ -129,6 +128,7 @@ export function learnerContext() {
   ];
   return lines.filter(Boolean).join('\n');
 }
+export function learnerContext() { return learnerContextFrom(getSetup()); }
 
 /* ---------------- dom utils ---------------- */
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -528,13 +528,14 @@ export async function connectTest(key = getKey(), onProgress) {
   throw lastErr || new ApiError('연결 테스트에 실패했습니다.', { code: 'unknown', retryable: true });
 }
 
-function buildBody({ system, parts, contents, temperature = 0.7, maxTokens = 4096, json = false, schema }) {
+function buildBody({ system, parts, contents, temperature = 0.7, maxTokens = 4096, json = false, schema, tools }) {
   const generationConfig = { temperature, maxOutputTokens: maxTokens };
   if (json) generationConfig.responseMimeType = 'application/json';
   if (schema) generationConfig.responseSchema = schema;
   return {
     contents: contents || [{ role: 'user', parts }],
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+    ...(tools && tools.length ? { tools } : {}),
     generationConfig,
     safetySettings: [
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },

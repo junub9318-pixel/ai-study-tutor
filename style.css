@@ -14,6 +14,9 @@
   --warn: #f6b756;
   --danger: #ff6b7d;
   --ok: #46d18a;
+  --danger-ink: #ffb3bd;
+  --ok-ink: #9aebbd;
+  --warn-ink: #ffd08a;
   --shadow: 0 18px 40px -22px rgba(4,10,30,.75);
 }
 html[data-theme="dark"]{
@@ -33,24 +36,32 @@ html[data-theme="dark"]{
   --topbar: rgba(10,14,24,.82);
 }
 html[data-theme="light"]{
-  --bg: #f6f4ef;
-  --bg-grad: radial-gradient(1100px 600px at 5% -10%, #e7e6ff 0%, rgba(246,244,239,0) 55%), radial-gradient(900px 500px at 100% 0%, #dff3ee 0%, rgba(246,244,239,0) 55%);
-  --surface: #fffefb;
-  --surface-2: #f4f2ec;
-  --surface-3: #ebe8e0;
-  --border: #e0dbd0;
-  --border-soft: #ece8df;
-  --text: #1d2333;
-  --text-2: #3b4356;
-  --muted: #6c7488;
-  --code-bg: #f2f0ea;
-  --bubble-ai: #f4f2ec;
-  --bubble-user: linear-gradient(135deg, #4f5fd8, #6275ea);
-  --accent: #4a5bd6;
-  --accent-strong: #3b4bc4;
-  --accent-soft: rgba(74,91,214,.10);
-  --shadow: 0 16px 34px -24px rgba(30,40,70,.45);
-  --topbar: rgba(246,244,239,.86);
+  --bg: #f6f7fb;
+  --bg-grad: radial-gradient(1100px 600px at 5% -10%, #e9edff 0%, rgba(246,247,251,0) 55%), radial-gradient(900px 500px at 100% 0%, #e3f6f0 0%, rgba(246,247,251,0) 55%);
+  --surface: #ffffff;
+  --surface-2: #f3f5fa;
+  --surface-3: #e8ecf4;
+  --border: #dce1ea;
+  --border-soft: #e9edf4;
+  --text: #151a26;
+  --text-2: #3c4557;
+  --muted: #677085;
+  --code-bg: #f4f6fa;
+  --bubble-ai: #f4f6fa;
+  --bubble-user: linear-gradient(135deg, #3f56cf, #5a70e8);
+  --accent: #3b53d4;
+  --accent-strong: #2c41b8;
+  --accent-soft: rgba(59,83,212,.10);
+  --mint: #0f9d78;
+  --mint-soft: rgba(15,157,120,.12);
+  --warn: #b7791f;
+  --danger: #cf3348;
+  --ok: #0f8a52;
+  --danger-ink: #a8273c;
+  --ok-ink: #0a7444;
+  --warn-ink: #8a5a10;
+  --shadow: 0 16px 34px -26px rgba(30,42,70,.35);
+  --topbar: rgba(255,255,255,.88);
 }
 
 *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -226,8 +237,8 @@ code{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9
   font-size: 12.5px; color: var(--text-2);
   display: flex; align-items: center; gap: 8px;
 }
-.status.err{ background: rgba(255,107,125,.1); border-color: rgba(255,107,125,.35); color: #ffb3bd; }
-.status.ok{ background: rgba(70,209,138,.1); border-color: rgba(70,209,138,.32); color: #9aebbd; }
+.status.err{ background: color-mix(in srgb, var(--danger) 10%, transparent); border-color: color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger-ink); }
+.status.ok{ background: color-mix(in srgb, var(--ok) 10%, transparent); border-color: color-mix(in srgb, var(--ok) 32%, transparent); color: var(--ok-ink); }
 .status[hidden]{ display: none; }
 .spinner{
   width: 14px; height: 14px; border-radius: 50%; flex: none;
@@ -421,7 +432,7 @@ select{ appearance: none; background-image: linear-gradient(45deg, transparent 5
 .msg.user .ava{ background: var(--accent-soft); border-color: transparent; }
 .msg.user .bubble{ background: var(--bubble-user); color: #fff; border: 0; border-bottom-right-radius: 5px; }
 .msg.ai .bubble{ border-bottom-left-radius: 5px; }
-.msg.error .bubble{ background: rgba(255,107,125,.1); border-color: rgba(255,107,125,.35); color: #ffc0c7; }
+.msg.error .bubble{ background: color-mix(in srgb, var(--danger) 10%, transparent); border-color: color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger-ink); }
 .msg .meta{ display: flex; gap: 6px; align-items: center; margin-top: 6px; padding: 0 2px; }
 .msg.user .meta{ justify-content: flex-end; }
 .meta .tag{ font-size: 10px; color: var(--muted); }
@@ -582,7 +593,7 @@ select{ appearance: none; background-image: linear-gradient(45deg, transparent 5
 .result-item .ri-q{ font-size: 13.5px; }
 .result-item .ri-a{ font-size: 12.5px; color: var(--text-2); margin-top: 6px; }
 .weak-list{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.weak-tag{ padding: 4px 10px; border-radius: 999px; background: rgba(255,107,125,.12); border: 1px solid rgba(255,107,125,.35); color: #ffb3bd; font-size: 11px; font-weight: 700; }
+.weak-tag{ padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); color: var(--danger-ink); font-size: 11px; font-weight: 700; }
 .history-item{ display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); font-size: 12.5px; }
 .history-item:last-child{ border-bottom: 0; }
 .history-item .h-score{ font-weight: 800; }
@@ -824,7 +835,7 @@ select{ appearance: none; background-image: linear-gradient(45deg, transparent 5
    v2 — Duolingo 상단바 · Astra 다크 시험 화면 · 온보딩
    ========================================================= */
 html[data-theme="dark"]{ --bg:#000; --bg-grad:none; --surface:#0d0d10; --surface-2:#151519; --surface-3:#1d1d23; --border:#26262e; --border-soft:#1b1b22; --text:#f4f5f8; --text-2:#c9ccd6; --muted:#8b8f9e; --code-bg:#0b0b0e; --bubble-ai:#111116; --topbar:rgba(0,0,0,.92); --shadow:0 20px 46px -26px rgba(0,0,0,.9); }
-html[data-theme="light"]{ --bg-grad:none; }
+html[data-theme="light"]{ --bg-grad: radial-gradient(900px 480px at 12% -8%, #eef1ff 0%, rgba(246,247,251,0) 62%); }
 
 /* ---------- top bar ---------- */
 .topbar{
@@ -944,9 +955,9 @@ html[data-theme="light"]{ --bg-grad:none; }
   position:relative; width: 58px; height: 58px; border-radius:50%; flex:none;
   display:flex; align-items:center; justify-content:center; font-size: 22px;
   background: var(--surface-3); color: var(--muted);
-  box-shadow: inset 0 -4px 0 rgba(0,0,0,.35), 0 6px 14px -6px rgba(0,0,0,.7);
+  box-shadow: inset 0 -4px 0 color-mix(in srgb, #000 32%, transparent), 0 6px 14px -6px color-mix(in srgb, #000 55%, transparent);
 }
-.lesson .node::after{ content:""; position:absolute; inset:auto 0 -4px 0; height:8px; border-radius:50%; background: rgba(0,0,0,.45); filter: blur(3px); z-index:-1; }
+.lesson .node::after{ content:""; position:absolute; inset:auto 0 -4px 0; height:8px; border-radius:50%; background: color-mix(in srgb, #000 30%, transparent); filter: blur(3px); z-index:-1; }
 .lesson.done .node{ background: linear-gradient(180deg,#ffffff,#d9dbe4); color:#0b0b0f; box-shadow: inset 0 -4px 0 rgba(0,0,0,.12), 0 8px 18px -8px rgba(255,255,255,.35); }
 .lesson.current .node{
   background: radial-gradient(circle at 50% 26%, #cfd8ff 0%, #7e93ff 34%, #3f55e8 74%, #2a37b8 100%);
@@ -967,7 +978,7 @@ html[data-theme="light"]{ --bg-grad:none; }
 .lesson .l-ico{
   position:absolute; left: 18px; top: -6px; width: 26px; height: 26px; border-radius: 8px;
   display:flex; align-items:center; justify-content:center; font-size: 13px;
-  background: #1a1a20; border:1px solid #33334a; color:#dfe3ff;
+  background: var(--surface-3); border:1px solid var(--border); color: var(--accent-strong);
 }
 .lesson.current .l-ico{ box-shadow: 0 0 16px rgba(110,130,255,.6); }
 .lesson .l-go{ font-size: 16px; color: var(--muted); }
@@ -1081,7 +1092,7 @@ html[data-theme="light"]{ --bg-grad:none; }
 .set-emoji{ width:44px; height:44px; border-radius: 13px; background: var(--surface-2); border:1px solid var(--border); font-size: 20px; flex:none; }
 .set-note{ font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height:1.55; }
 .set-badge{ display:inline-flex; align-items:center; gap:5px; padding: 3px 9px; border-radius:99px; font-size: 10.5px; font-weight:800; }
-.set-badge.ok{ background: rgba(70,209,138,.14); color:#8ef0bb; }
+.set-badge.ok{ background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok-ink); }
 .set-badge.off{ background: var(--surface-3); color: var(--muted); }
 .set-link{ color:#6f8bff; font-weight:700; }
 
@@ -1200,7 +1211,8 @@ html[data-theme="light"]{ --bg-grad:none; }
 .onb{
   --bg:#000; --surface:#0d0d10; --surface-2:#151519; --surface-3:#1d1d23;
   --border:#2a2a33; --border-soft:#1b1b22; --text:#f4f5f8; --text-2:#c9ccd6;
-  --muted:#8b8f9e; --accent:#6f8bff; --accent-strong:#9fb0ff;
+  --muted:#8b8f9e; --accent:#6f8bff; --accent-strong:#9fb0ff; --accent-soft: rgba(111,139,255,.16);
+  --danger-ink:#ffb3bd; --ok-ink:#9aebbd; --warn-ink:#ffd08a;
   color: var(--text);
 }
 .onb .onb-input, .onb select{ background:#151519; color:#f4f5f8; }
@@ -1210,3 +1222,109 @@ html[data-theme="light"]{ --bg-grad:none; }
 .onb .onb-next{ background:linear-gradient(180deg,#4b66ff,#3049e0); color:#fff; }
 .onb .ghost-btn{ background:#151519; border-color:#2a2a33; color:#c9ccd6; }
 .onb .status{ background:#151519; border-color:#2a2a33; color:#c9ccd6; }
+
+/* =========================================================
+   v3 — 화이트 모드 정교화 · AI 교육과정 카드 · 테마 전환
+   ========================================================= */
+
+/* ---------- 화이트 모드 대비 보정 ---------- */
+html[data-theme="light"] .lesson.done .node{
+  background: linear-gradient(180deg,#eef3ff,#cdd8f4);
+  color:#23304a;
+  box-shadow: inset 0 -4px 0 rgba(24,40,80,.10), 0 8px 16px -10px rgba(30,42,70,.35);
+}
+html[data-theme="light"] .lesson.done .node::after{ background: rgba(30,42,70,.14); }
+html[data-theme="light"] .lesson.locked .node{
+  background: var(--surface-2); color: var(--muted); opacity:.85;
+  box-shadow: inset 0 -3px 0 rgba(24,40,80,.06);
+}
+html[data-theme="light"] .lesson.current .node{
+  box-shadow: inset 0 -6px 0 rgba(0,0,0,.18), 0 0 0 6px rgba(60,90,224,.14), 0 0 26px rgba(70,100,235,.30);
+}
+html[data-theme="light"] .lesson.current .node::before{ border-color: rgba(60,90,220,.35); }
+html[data-theme="light"] .tier-badge{ filter: drop-shadow(0 8px 18px rgba(30,42,70,.18)); }
+html[data-theme="light"] .folder-tab{ box-shadow: 0 -2px 10px -8px rgba(30,42,70,.35); }
+html[data-theme="light"] .exam-card{ border-color: var(--border); }
+html[data-theme="light"] .bubble code{ background: var(--surface-2); }
+html[data-theme="light"] .prof-btn .key-dot{ border-color: #fff; }
+html[data-theme="light"] .status.err{ background: color-mix(in srgb, var(--danger) 8%, #fff); }
+html[data-theme="light"] .status.ok{ background: color-mix(in srgb, var(--ok) 8%, #fff); }
+html[data-theme="light"] .opt.correct{ border-color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, #fff); }
+html[data-theme="light"] .opt.wrong{ border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, #fff); }
+html[data-theme="light"] .result-item.ok{ border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
+html[data-theme="light"] .result-item.no{ border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
+html[data-theme="light"] .voice-bar{ background: color-mix(in srgb, var(--danger) 8%, #fff); border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
+html[data-theme="light"] .timer.warn{ background: color-mix(in srgb, var(--danger) 10%, transparent); }
+html[data-theme="light"] .sheet{ box-shadow: 0 -20px 60px -28px rgba(30,42,70,.45); }
+html[data-theme="light"] .modal{ box-shadow: 0 40px 80px -34px rgba(30,42,70,.45); }
+html[data-theme="light"] .flash-btn.s0.on, html[data-theme="light"] .flash-btn.s0:hover{ background: color-mix(in srgb, var(--danger) 8%, #fff); }
+html[data-theme="light"] .flash-btn.s1.on, html[data-theme="light"] .flash-btn.s1:hover{ background: color-mix(in srgb, var(--warn) 10%, #fff); }
+html[data-theme="light"] .flash-btn.s2.on, html[data-theme="light"] .flash-btn.s2:hover{ background: color-mix(in srgb, var(--ok) 10%, #fff); }
+html[data-theme="light"] .badge-tile{ background: var(--surface); }
+html[data-theme="light"] .stat-box{ background: var(--surface); }
+html[data-theme="light"] .seg-btn.active{ box-shadow: 0 2px 8px -5px rgba(30,42,70,.4); }
+html[data-theme="light"] .bottomnav{ background: rgba(255,255,255,.94); }
+html[data-theme="light"] .composer{ background: color-mix(in srgb, #fff 72%, transparent); }
+html[data-theme="light"] .composer-row{ background:#fff; }
+html[data-theme="light"] .sim-stage{ background: var(--surface-2); }
+html[data-theme="light"] .face.back{ background: var(--surface-2); }
+
+/* ---------- AI 교육과정 카드 (온보딩 · 설정 공용) ---------- */
+.onb-cur-list{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+.cur-card{
+  padding: 12px 14px; border-radius: 16px;
+  background: var(--surface); border:1px solid var(--border);
+}
+.cur-card.loading{ border-style: dashed; }
+.cur-head{ display:flex; align-items:center; gap:10px; }
+.cur-ico{
+  width:40px; height:40px; border-radius:13px; flex:none;
+  display:flex; align-items:center; justify-content:center; font-size:19px;
+  background: var(--surface-2); border:1px solid var(--border);
+}
+.cur-title{ flex:1; min-width:0; }
+.cur-title b{ display:block; font-size:14px; font-weight:800; }
+.cur-title small{ display:block; font-size:11.5px; color: var(--muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cur-badge{
+  flex:none; font-size:10px; font-weight:800; letter-spacing:.02em;
+  padding: 3px 9px; border-radius: 99px;
+  background: var(--accent-soft); color: var(--accent-strong); border:1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.cur-badge.basic{ background: var(--surface-3); color: var(--muted); border-color: var(--border); }
+.cur-topics{ list-style:none; margin:11px 0 0; padding:0; display:flex; flex-direction:column; gap:7px; }
+.cur-topics li{ display:flex; gap:9px; align-items:flex-start; font-size:12px; line-height:1.45; }
+.cur-topics .n{
+  width:19px; height:19px; border-radius:7px; flex:none; margin-top:1px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:800;
+  background: var(--accent-soft); color: var(--accent-strong);
+}
+.cur-topics b{ display:block; font-size:12.5px; font-weight:700; color: var(--text); }
+.cur-topics span{ display:block; font-size:11px; color: var(--muted); margin-top:1px; }
+.cur-src{ margin-top:10px; font-size:10.5px; color: var(--muted); }
+.cur-skel{ margin-top:12px; display:flex; flex-direction:column; gap:7px; }
+.cur-skel i{ height:9px; border-radius:99px; background: var(--surface-3); display:block; opacity:.7; animation: curPulse 1.3s ease-in-out infinite; }
+.cur-skel i:nth-child(2){ width:82%; animation-delay:.15s; }
+.cur-skel i:nth-child(3){ width:64%; animation-delay:.3s; }
+@keyframes curPulse{ 0%,100%{ opacity:.4; } 50%{ opacity:.9; } }
+.onb .cur-card{ background:#101014; border-color:#26262e; }
+.onb .cur-ico{ background:#151519; border-color:#2a2a33; }
+.onb .cur-topics .n{ background: rgba(111,139,255,.18); color:#a8b7ff; }
+.onb .cur-badge{ background: rgba(111,139,255,.16); border-color: rgba(111,139,255,.35); color:#aebbff; }
+.onb .cur-badge.basic{ background:#17171c; border-color:#2a2a33; color:#8b8f9e; }
+.onb-cur-list .cur-card{ animation: fade .25s ease; }
+
+/* 설정 — 과목별 교육과정 요약 */
+.cur-mini{ display:flex; flex-direction:column; gap:2px; margin-top:10px; }
+.cur-mini-row{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border-soft); }
+.cur-mini-row:last-child{ border-bottom:0; }
+.cur-mini-row .cm-ico{ width:30px; height:30px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; background: var(--surface-2); border:1px solid var(--border); flex:none; }
+.cur-mini-row .cm-main{ flex:1; min-width:0; }
+.cur-mini-row .cm-main b{ display:block; font-size:12.5px; font-weight:800; }
+.cur-mini-row .cm-main small{ display:block; font-size:11px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* 테마 세그먼트 */
+.theme-seg .seg-btn{ min-height:40px; font-size:13px; }
+
+/* 랭킹 빈 안내 */
+.rank-empty{ list-style:none; padding: 14px 10px; text-align:center; font-size:12px; color: var(--muted); border:1px dashed var(--border); border-radius:12px; margin-top:8px; }

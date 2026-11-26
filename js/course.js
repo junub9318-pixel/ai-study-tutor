@@ -5,12 +5,13 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid,
-} from './core.js?v=7639b443';
-import { showView, openKeyModal } from './ui.js?v=7639b443';
+} from './core.js?v=9953f6e4';
+import { showView, openKeyModal } from './ui.js?v=9953f6e4';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=7639b443';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=7639b443';
+} from './gamify.js?v=9953f6e4';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=9953f6e4';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=9953f6e4';
 
 const el = (id) => document.getElementById(id);
 
@@ -45,10 +46,14 @@ export function courseId() {
 
 function defaultCourse(subjectId) {
   const s = subjectById(subjectId) || currentSubject();
-  const unit = DEFAULT_UNITS[subjectId] || `${s.label} 기초 과정`;
+  const basic = basicCurriculum(subjectId);
+  const unit = DEFAULT_UNITS[subjectId] || basic.unitTitle || `${s.label} 기초 과정`;
   return {
     subjectId,
     unitTitle: unit,
+    curriculumName: basic.curriculumName,
+    source: 'basic',
+    updatedAt: 0,
     lessons: LESSON_BLUEPRINT.map((b, i) => ({
       id: 'l' + i,
       type: b.type,
@@ -337,6 +342,7 @@ export function openAddSubjectModal() {
     toast(`"${v}"을(를) 추가했어요`);
   });
   modal.root.querySelector('#addConfirm').addEventListener('click', () => {
+    const prevIds = (getSetup().subjects || []).slice();
     saveSetup({ subjects: Array.from(chosen) });
     modal.close();
     const cur = courseId();
@@ -347,16 +353,25 @@ export function openAddSubjectModal() {
     renderSubjectSheet();
     renderCourse();
     toast('과목을 저장했어요', 'xp');
+    const added = Array.from(chosen).filter(id => !prevIds.includes(id));
+    if (added.length) {
+      setTimeout(async () => {
+        toast('새 과목 교육과정을 확인하고 있어요', 'info', 2400);
+        await refreshCurricula(added);
+      }, 200);
+    }
   });
 }
 
 function openCourseInfo() {
   const c = getCourse();
   const s = currentSubject();
+  const src = c.source === 'ai' ? 'AI 확인' : '기본 교육과정';
+  const when = c.updatedAt ? new Date(c.updatedAt).toLocaleDateString('ko-KR') : '—';
   const modal = openModal(`
     <div class="modal-head"><h2>${escapeHtml(s.label)} 코스</h2><button class="icon-btn" data-close type="button">✕</button></div>
     <div class="modal-body">
-      <p class="hint">지금 단원: <b>${escapeHtml(c.unitTitle)}</b><br/>수업 ${c.lessons.length}개 중 ${c.lessons.filter(l => l.done).length}개 완료</p>
+      <p class="hint">지금 단원: <b>${escapeHtml(c.unitTitle)}</b><br/>${c.curriculumName ? escapeHtml(c.curriculumName) + ' · ' : ''}${src} · ${when}<br/>수업 ${c.lessons.length}개 중 ${c.lessons.filter(l => l.done).length}개 완료</p>
       <ol style="margin:10px 0 0; padding-left:20px; font-size:12.5px; color:var(--text-2)">
         ${c.lessons.map(l => `<li style="margin:4px 0">${escapeHtml(l.title)} <span style="color:var(--muted)">${l.done ? '· 완료' : ''}</span></li>`).join('')}
       </ol>
@@ -390,52 +405,89 @@ function openCourseInfo() {
 }
 
 /* ---------------- AI curriculum ---------------- */
-const CUR_SCHEMA = {
-  type: 'object',
-  properties: {
-    unitTitle: { type: 'string' },
-    topics: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, focus: { type: 'string' } }, required: ['title'] } },
-  },
-  required: ['unitTitle', 'topics'],
-};
-
-export async function generateCurriculum() {
-  const s = currentSubject();
-  const setup = getSetup() || {};
-  const system = `너는 한국 학교 교육과정에 정통한 학습 설계자다. 학생의 국가·학교급·학년·학교 교육과정과 시험 범위에 맞춰 한 과목의 단원을 설계한다.
-규칙:
-- unitTitle: 지금 배우는 한 단원(또는 시험 범위)의 이름. 20자 이내, 교과서 단원명처럼.
-- topics: 그 단원의 핵심 주제 7개. 앞에서 뒤로 갈수록 심화된다. 각 title은 20자 이내, focus는 한 줄 설명.
-- 학생 자료가 있으면 그 자료의 단원명을 우선 사용한다.
-- ${learnerContext()}`;
-  const materials = state.materials.slice(0, 4);
-  const user = `과목: ${s.label}\n${materialContext(materials, 4000)}`;
-  const data = await generateJSON({ system, parts: [{ text: user }], schema: CUR_SCHEMA, temperature: 0.5, maxTokens: 2048 });
-  const topics = (data.topics || []).slice(0, 7);
-  if (!topics.length) throw new Error('단원을 만들지 못했어요. 다시 시도해 주세요.');
+/** 기존 진도를 지키면서 새 교육과정(단원·주제)을 코스에 적용한다 */
+export function applyCurriculum(subjectId, cur) {
+  if (!cur || !Array.isArray(cur.topics) || !cur.topics.length) return null;
+  const prev = getCourse(subjectId);
+  const doneByTitle = {};
+  (prev.lessons || []).forEach(l => {
+    const key = (l.type || '') + '|' + String(l.title || '').replace(/^\d+\.\s*/, '').trim();
+    doneByTitle[key] = !!l.done;
+  });
+  const topics = cur.topics.slice(0, LESSON_BLUEPRINT.length);
   const lessons = LESSON_BLUEPRINT.map((b, i) => {
-    const t = topics[i % topics.length];
+    const t = topics[i % topics.length] || {};
+    const base = String(t.title || b.label).trim();
+    const prevKey = b.type + '|' + base;
     return {
       id: 'l' + i,
       type: b.type,
       icon: b.icon,
-      title: `${i + 1}. ${String(t.title || b.label).trim()}`,
-      sub: `${b.sub} · ${String(t.focus || '').trim()}`.replace(/ · $/, ''),
-      done: false,
+      title: `${i + 1}. ${base}`,
+      sub: `${b.sub}${t.focus ? ' · ' + String(t.focus).trim() : ''}`,
+      done: !!doneByTitle[prevKey],
       completedAt: 0,
     };
   });
   const c = {
-    subjectId: courseId(),
-    unitTitle: String(data.unitTitle || DEFAULT_UNITS[state.subject] || s.label).trim(),
+    subjectId,
+    unitTitle: String(cur.unitTitle || prev.unitTitle || '나의 학습 코스').trim(),
+    curriculumName: String(cur.curriculumName || '').trim(),
+    source: cur.source === 'ai' ? 'ai' : 'basic',
+    updatedAt: Date.now(),
     lessons,
-    createdAt: Date.now(),
-    ai: true,
+    createdAt: prev.createdAt || Date.now(),
+    ai: cur.source === 'ai',
   };
   putCourse(c);
+  return c;
+}
+
+/** 코스에 저장된 교육과정 요약 */
+export function courseCurriculum(subjectId = courseId()) {
+  const c = getCourse(subjectId);
+  return {
+    subjectId,
+    label: subjectLabel(subjectId),
+    icon: subjectIcon(subjectId),
+    unitTitle: c.unitTitle,
+    curriculumName: c.curriculumName || '',
+    source: c.source || (c.ai ? 'ai' : 'basic'),
+    updatedAt: c.updatedAt || 0,
+    topics: (c.lessons || []).map(l => ({
+      title: String(l.title || '').replace(/^\d+\.\s*/, ''),
+      sub: l.sub || '',
+    })),
+  };
+}
+
+/** 여러 과목 교육과정을 만들고 코스에 적용 (설정 · 온보딩 공용) */
+export async function refreshCurricula(subjectIds, { learner, onProgress } = {}) {
+  const ids = (subjectIds && subjectIds.length) ? subjectIds.slice() : (getSetup() || {}).subjects || [courseId()];
+  const out = {};
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const label = subjectLabel(id);
+    onProgress && onProgress({ phase: 'start', subjectId: id, label, index: i, total: ids.length });
+    const cur = await buildCurriculum(id, { learner, materials: state.materials });
+    out[id] = applyCurriculum(id, cur) || cur;
+    onProgress && onProgress({ phase: 'done', subjectId: id, label, index: i, total: ids.length, cur: out[id] });
+  }
   renderCourse();
-  toast('AI가 교육과정에 맞춰 단원을 다시 짰어요', 'xp', 3000);
-  void setup;
+  if (el('subjectSheet') && !el('subjectSheet').hidden) renderSubjectSheet();
+  return out;
+}
+
+export async function generateCurriculum() {
+  const id = courseId();
+  const cur = await buildCurriculum(id, { materials: state.materials });
+  if (!cur || !cur.topics || !cur.topics.length) throw new Error('단원을 만들지 못했어요. 다시 시도해 주세요.');
+  applyCurriculum(id, cur);
+  renderCourse();
+  toast(cur.source === 'ai'
+    ? 'AI가 교육과정에 맞춰 단원을 다시 짰어요'
+    : 'API 키가 없어 기본 교육과정으로 단원을 채웠어요', cur.source === 'ai' ? 'xp' : 'info', 3000);
+  return cur;
 }
 
 /* ---------------- exam search / all features ---------------- */

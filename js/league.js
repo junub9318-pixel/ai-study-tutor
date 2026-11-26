@@ -4,13 +4,13 @@
 import {
   K, state, load, save, $, escapeHtml, fmt, toast, openModal, dayKey, weekStartKey,
   currentSubject, removeKey as _rk,
-} from './core.js?v=7639b443';
+} from './core.js?v=9953f6e4';
 import {
   TIERS, tierFor, weeklyXP, totalXP, currentStreak, bestStreak, profile, leaderboard,
   friends, removeFriend, addFriendByCode, myCode, myLink, BADGES, isBadgeOn,
   unlockedBadges, emit,
-} from './gamify.js?v=7639b443';
-import { toastCopy } from './ui.js?v=7639b443';
+} from './gamify.js?v=9953f6e4';
+import { toastCopy } from './ui.js?v=9953f6e4';
 
 const el = (id) => document.getElementById(id);
 const EMOJIS = ['🐣', '🐼', '🦊', '🐧', '🐯', '🦉', '🐨', '🦄', '🚀', '📚', '🎧', '🧠', '⭐', '🍀', '🎓', '🔥'];
@@ -41,7 +41,6 @@ export function renderLeague() {
       ${x.icon} ${x.name} ${x.min}${x.next ? '' : '+'}
     </span>`).join('');
 
-  el('showBots').checked = !!state.settings.showBots;
   const wk = weekStartKey();
   el('weekLabel').textContent = `${wk.slice(5).replace('-', '/')} 주간`;
 
@@ -55,15 +54,17 @@ export function renderLeague() {
 }
 
 function renderRank() {
-  const rows = leaderboard({ includeBots: !!(state.settings && state.settings.showBots) });
+  const rows = leaderboard();
+  const friends = rows.filter(r => r.friend).length;
   el('rankList').innerHTML = rows.map(r => `
     <li class="rank-row ${r.me ? 'me' : ''}">
       <span class="pos ${r.rank <= 3 ? 'top' : ''}">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</span>
       <span class="r-ava">${r.emoji || '🙂'}</span>
-      <span class="r-name">${escapeHtml(r.name)}${r.me && r.name !== '나' ? ' <small>나</small>' : r.bot ? ' <small>AI 메이트</small>' : ''}${r.stale ? ' <small>· 갱신 필요</small>' : ''}</span>
+      <span class="r-name">${escapeHtml(r.name)}${r.me && r.name !== '나' ? ' <small>나</small>' : ''}${r.stale ? ' <small>· 갱신 필요</small>' : ''}</span>
       <span class="r-tier">${(r.tier && r.tier.icon) || '🥉'}</span>
       <span class="r-xp">${fmt(r.weeklyXP)} <small>XP</small></span>
-    </li>`).join('');
+    </li>`).join('') + (friends === 0 ? `
+    <li class="rank-empty">친구 코드를 추가하면 이 보드에 함께 표시돼요.</li>` : '');
 }
 
 function renderFriends() {
@@ -170,11 +171,6 @@ function resetAll() {
 
 /* ---------------- init ---------------- */
 export function initLeague() {
-  el('showBots').addEventListener('change', (e) => {
-    state.settings.showBots = e.target.checked;
-    save(K.settings, state.settings);
-    renderRank();
-  });
   el('addFriendBtn').addEventListener('click', addFriend);
   el('friendCodeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addFriend(); });
   el('copyCode').addEventListener('click', () => toastCopy(myCode(), '친구 코드를 복사했어요'));

@@ -1,7 +1,7 @@
 /* =========================================================
    gamify.js — XP · 스트릭 · 리그 티어 · 배지 · 친구 랭킹
    ========================================================= */
-import { K, load, save, dayKey, shiftDay, weekStartKey, fmt, toast, state } from './core.js?v=7639b443';
+import { K, load, save, dayKey, shiftDay, weekStartKey, fmt, toast, state } from './core.js?v=9953f6e4';
 
 export const TIERS = [
   { id: 'bronze',   name: '브론즈',     icon: '🥉', min: 0,    next: 100,  color: '#c98a5b' },
@@ -277,38 +277,8 @@ export function removeFriend(code) {
   emit();
 }
 
-/* ---------------- AI 스터디 메이트 (가상 라이벌) ---------------- */
-const BOTS = [
-  { name: '해솔', emoji: '🦊', base: 520 },
-  { name: '민재', emoji: '🐼', base: 380 },
-  { name: '서윤', emoji: '🐧', base: 700 },
-  { name: '도현', emoji: '🐯', base: 260 },
-  { name: 'Lumi', emoji: '🦉', base: 860 },
-];
-function hashStr(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return h >>> 0;
-}
-function botRows() {
-  const wk = weekStartKey();
-  const now = new Date();
-  const start = new Date(wk + 'T00:00:00');
-  const elapsed = Math.min(7, Math.max(0.4, (now - start) / 86400000 + 0.55));
-  return BOTS.map((b, i) => {
-    const r = (hashStr(b.name + wk) % 1000) / 1000;
-    const pace = 0.82 + r * 0.46;
-    const xp = Math.round((b.base * pace) * (elapsed / 7));
-    return {
-      name: b.name, emoji: b.emoji, weeklyXP: xp,
-      streak: 2 + (hashStr(b.name + wk) % 28),
-      tier: tierFor(xp), bot: true, id: 'bot' + i,
-    };
-  });
-}
-
 /* ---------------- leaderboard ---------------- */
-export function leaderboard({ includeBots = true } = {}) {
+export function leaderboard() {
   const p = ensure();
   const wx = weeklyXP();
   const rows = [{
@@ -323,7 +293,6 @@ export function leaderboard({ includeBots = true } = {}) {
       tier: tierFor(f.weeklyXP), stale: !!(f.weekKey && f.weekKey !== weekStartKey()),
     });
   }
-  if (includeBots) rows.push(...botRows());
   rows.sort((a, b) => (b.weeklyXP - a.weeklyXP) || (b.streak - a.streak) || a.name.localeCompare(b.name));
   return rows.map((r, i) => ({ ...r, rank: i + 1 }));
 }

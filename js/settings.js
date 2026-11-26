@@ -5,15 +5,15 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings,
-} from './core.js?v=7639b443';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=7639b443';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=7639b443';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses } from './course.js?v=7639b443';
+} from './core.js?v=9953f6e4';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=9953f6e4';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=9953f6e4';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=9953f6e4';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=7639b443';
-import { openOnboarding } from './onboarding.js?v=7639b443';
+} from './sync.js?v=9953f6e4';
+import { openOnboarding } from './onboarding.js?v=9953f6e4';
 
 const el = (id) => document.getElementById(id);
 
@@ -21,6 +21,75 @@ function fmtDate(ts) {
   if (!ts) return '아직 없음';
   const d = new Date(ts);
   return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function curMiniListHtml(subjIds) {
+  return (subjIds || []).map(id => {
+    const c = courseCurriculum(id);
+    const badge = c.updatedAt
+      ? (c.source === 'ai' ? '<span class="cur-badge">AI</span>' : '<span class="cur-badge basic">기본</span>')
+      : '<span class="cur-badge basic">전</span>';
+    return `<div class="cur-mini-row" data-cmrow="${escapeHtml(id)}">
+      <span class="cm-ico">${c.icon}</span>
+      <div class="cm-main"><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.updatedAt ? c.unitTitle : '아직 확인하지 않았어요')}</small></div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function setCurListLive(host, subjIds) {
+  const box = host.querySelector('#setCurList');
+  if (box) box.innerHTML = curMiniListHtml(subjIds);
+  const when = host.querySelector('#setCurWhen');
+  const t = (getSetup() || {}).curriculumAt;
+  if (when) when.textContent = t ? `${fmtDate(t)} 확인` : '아직 확인 전';
+}
+
+async function runCurriculumRefresh(host, subjIds, { silent = false } = {}) {
+  const box = host.querySelector('#setCurStatus');
+  const btn = host.querySelector('#setCurRefresh');
+  const save = host.querySelector('#setSave');
+  if (btn) btn.disabled = true;
+  if (save) save.disabled = true;
+  if (box) {
+    box.hidden = false;
+    box.className = 'status';
+    box.innerHTML = `<span class="spinner"></span> ${hasKey() ? 'AI가 교육과정을 다시 확인하는 중…' : '기본 교육과정으로 갱신하는 중…'}`;
+  }
+  try {
+    const map = await refreshCurricula(subjIds, {
+      onProgress: (p) => {
+        if (!box) return;
+        if (p.phase === 'start') {
+          box.className = 'status';
+          box.innerHTML = `<span class="spinner"></span> <b>${escapeHtml(p.label)}</b> 교육과정 확인 중… (${p.index + 1} / ${p.total})`;
+        }
+      },
+    });
+    saveSetup({ curriculumAt: Date.now() });
+    setCurListLive(host, subjIds);
+    const list = Object.values(map || {});
+    const ai = list.filter(c => c && c.source === 'ai').length;
+    if (box) {
+      box.hidden = false;
+      box.className = 'status ok';
+      box.innerHTML = ai > 0
+        ? `✅ ${list.length}개 과목 교육과정을 새로 맞췄어요 · AI 확인 ${ai}개${ai < list.length ? ` · 기본 ${list.length - ai}개` : ''}`
+        : `📘 ${list.length}개 과목을 기본 교육과정으로 갱신했어요. Gemini 키를 연결하면 학교·학년에 맞춰 AI가 다시 확인해 줘요.`;
+    }
+    if (!silent) toast(ai > 0 ? 'AI가 교육과정을 다시 확인했어요' : '기본 교육과정으로 갱신했어요', ai > 0 ? 'xp' : 'info', 3000);
+    return map;
+  } catch (e) {
+    if (box) {
+      box.hidden = false;
+      box.className = 'status err';
+      box.textContent = '❌ ' + (e.message || '교육과정을 갱신하지 못했어요.');
+    }
+    return null;
+  } finally {
+    if (btn) btn.disabled = false;
+    if (save) save.disabled = false;
+  }
 }
 
 export function renderSettings() {
@@ -98,10 +167,21 @@ export function renderSettings() {
           </select>
         </label>
       </div>
-      <p class="set-note">${dd == null ? '시험 날짜를 넣으면 D-day와 학습 계획이 자동으로 맞춰져요.' : dd > 0 ? `시험까지 ${dd}일 남았어요.` : '시험 날짜가 지났어요. 새 날짜를 넣어 주세요.'}</p>
+      <p class="set-note">${dd == null ? '시험 날짜를 넣으면 D-day와 학습 계획이 자동으로 맞춰져요.' : dd > 0 ? `시험까지 ${dd}일 남았어요.` : '시험 날짜가 지났어요. 새 날짜를 넣어 주세요.'}<br/>저장하면 바뀐 조건으로 AI가 교육과정(단원)을 자동으로 다시 확인해요.</p>
       <div class="row tight" style="margin-top:10px">
         <button class="primary small" id="setSave" type="button">설정 저장</button>
       </div>
+    </div>
+
+    <!-- AI 교육과정 -->
+    <div class="panel">
+      <div class="panel-head tight"><b>AI 교육과정</b><span class="week-label" id="setCurWhen">${setup.curriculumAt ? fmtDate(setup.curriculumAt) + ' 확인' : '아직 확인 전'}</span></div>
+      <p class="set-note" style="margin-top:0">국가·학교급·학년·학교·과목에 맞춰 과목별 단원과 핵심 주제를 AI가 확인해 둡니다. 위 학습 정보를 고쳐 저장하면 바뀐 조건으로 자동으로 다시 확인해요.</p>
+      <div class="cur-mini" id="setCurList">${curMiniListHtml(subjIds)}</div>
+      <div class="row tight" style="margin-top:10px">
+        <button class="ghost-btn small" id="setCurRefresh" type="button">🔄 AI로 다시 확인</button>
+      </div>
+      <div class="status" id="setCurStatus" hidden></div>
     </div>
 
     <!-- 과목 -->
@@ -195,12 +275,12 @@ export function renderSettings() {
         </div>
       </div>
       <div class="set-block">
-        <div class="set-row" style="justify-content:space-between">
-          <b style="font-size:13px">화면 테마</b>
-          <select id="setTheme" class="speed-select">
-            <option value="dark" ${document.documentElement.getAttribute('data-theme') === 'dark' ? 'selected' : ''}>다크 (Astra)</option>
-            <option value="light" ${document.documentElement.getAttribute('data-theme') === 'light' ? 'selected' : ''}>라이트</option>
-          </select>
+        <div class="set-row" style="justify-content:space-between; margin-bottom:8px">
+          <div><b style="font-size:13px">화면 테마</b><p class="set-note" style="margin-top:2px">다크 모드와 화이트 모드를 바로 바꿔 볼 수 있어요. 선택은 이 기기에 저장됩니다.</p></div>
+        </div>
+        <div class="seg wide theme-seg" id="setThemeSeg" role="group" aria-label="화면 테마">
+          <button class="seg-btn ${document.documentElement.getAttribute('data-theme') !== 'light' ? 'active' : ''}" data-theme-btn="dark" type="button">🌙 다크 모드</button>
+          <button class="seg-btn ${document.documentElement.getAttribute('data-theme') === 'light' ? 'active' : ''}" data-theme-btn="light" type="button">☀️ 화이트 모드</button>
         </div>
       </div>
       <div class="set-block">
@@ -261,6 +341,7 @@ function bindSettings(host) {
   });
 
   host.querySelector('#setSave')?.addEventListener('click', () => {
+    const before = getSetup() || {};
     const patch = {
       country: host.querySelector('#setCountry').value,
       level: host.querySelector('#setLevel').value,
@@ -272,10 +353,23 @@ function bindSettings(host) {
       dailyMinutes: Number(host.querySelector('#setMinutes').value || 60),
       goalPct: Number(host.querySelector('#setGoal').value || 70),
     };
+    const keyOf = (s) => ['country', 'level', 'grade', 'school', 'schoolNote'].map(k => String(s[k] || '')).join('|');
+    const changed = keyOf(before) !== keyOf(patch);
     saveSetup(patch);
     renderCourse();
     renderSettings();
-    toast('학습 정보를 저장했어요. AI가 이 기준으로 단원과 난이도를 맞춥니다.', 'xp', 3000);
+    const fresh = el('settingsBody');
+    if (changed) {
+      toast('학습 정보를 저장했어요. AI가 바뀐 조건으로 교육과정을 다시 확인합니다.', 'xp', 3000);
+      const ids = (getSetup() || {}).subjects || [];
+      setTimeout(() => runCurriculumRefresh(fresh, ids), 60);
+    } else {
+      toast('학습 정보를 저장했어요. AI가 이 기준으로 단원과 난이도를 맞춥니다.', 'xp', 2600);
+    }
+  });
+  host.querySelector('#setCurRefresh')?.addEventListener('click', () => {
+    const ids = (getSetup() || {}).subjects || [];
+    runCurriculumRefresh(host, ids);
   });
   host.querySelector('#setAddSubj')?.addEventListener('click', () => openAddSubjectModal());
   host.querySelector('#setOnboarding')?.addEventListener('click', () => openOnboarding(true));
@@ -290,9 +384,8 @@ function bindSettings(host) {
     renderCourse();
     toast('과목을 목록에서 뺐어요');
   }));
-
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=7639b443').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=9953f6e4').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
@@ -411,12 +504,17 @@ function bindSettings(host) {
     document.querySelectorAll('#modeSeg .seg-btn').forEach(x => x.classList.toggle('active', x.dataset.mode === b.dataset.mode));
     toast(b.dataset.mode === 'socratic' ? '기본 모드를 단계별 과외로 설정했어요' : '기본 모드를 핵심 정리로 설정했어요', 'info', 1800);
   });
-  host.querySelector('#setTheme')?.addEventListener('change', (e) => {
-    const theme = e.target.value;
+  host.querySelector('#setThemeSeg')?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-theme-btn]');
+    if (!b) return;
+    const theme = b.dataset.themeBtn === 'light' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', theme);
     save(K.theme, theme);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#ffffff');
+    host.querySelectorAll('#setThemeSeg .seg-btn').forEach(x => x.classList.toggle('active', x === b));
     document.dispatchEvent(new CustomEvent('app:theme', { detail: theme }));
-    toast(theme === 'dark' ? '다크 테마로 바꿨어요' : '라이트 테마로 바꿨어요', 'info', 1600);
+    toast(theme === 'light' ? '☀️ 화이트 모드로 바꿨어요' : '🌙 다크 모드로 바꿨어요', 'info', 1600);
   });
   host.querySelector('#setGoalXp')?.addEventListener('change', (e) => {
     state.settings.dailyGoal = Number(e.target.value) || 50;
