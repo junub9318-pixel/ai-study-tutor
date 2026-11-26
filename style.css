@@ -1199,3 +1199,18 @@ html[data-theme="light"]{ --bg-grad:none; }
   .onb-inner{ padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); }
   .onb-title{ font-size: 23px; }
 }
+
+/* 온보딩은 테마와 무관하게 항상 다크 (Astra) */
+.onb{
+  --bg:#000; --surface:#0d0d10; --surface-2:#151519; --surface-3:#1d1d23;
+  --border:#2a2a33; --border-soft:#1b1b22; --text:#f4f5f8; --text-2:#c9ccd6;
+  --muted:#8b8f9e; --accent:#6f8bff; --accent-strong:#9fb0ff;
+  color: var(--text);
+}
+.onb .onb-input, .onb select{ background:#151519; color:#f4f5f8; }
+.onb .onb-input::placeholder{ color:#6f7484; }
+.onb .onb-chip{ background:#101014; color:#c9ccd6; }
+.onb .onb-choice{ background:#0d0d10; color:#f4f5f8; }
+.onb .onb-next{ background:linear-gradient(180deg,#4b66ff,#3049e0); color:#fff; }
+.onb .ghost-btn{ background:#151519; border-color:#2a2a33; color:#c9ccd6; }
+.onb .status{ background:#151519; border-color:#2a2a33; color:#c9ccd6; }

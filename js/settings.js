@@ -5,15 +5,15 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings,
-} from './core.js?v=df153281';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=df153281';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=df153281';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses } from './course.js?v=df153281';
+} from './core.js?v=f58c593f';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=f58c593f';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=f58c593f';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses } from './course.js?v=f58c593f';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=df153281';
-import { openOnboarding } from './onboarding.js?v=df153281';
+} from './sync.js?v=f58c593f';
+import { openOnboarding } from './onboarding.js?v=f58c593f';
 
 const el = (id) => document.getElementById(id);
 

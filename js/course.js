@@ -5,12 +5,12 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid,
-} from './core.js?v=df153281';
-import { showView, openKeyModal } from './ui.js?v=df153281';
+} from './core.js?v=f58c593f';
+import { showView, openKeyModal } from './ui.js?v=f58c593f';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=df153281';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=df153281';
+} from './gamify.js?v=f58c593f';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=f58c593f';
 
 const el = (id) => document.getElementById(id);
 
