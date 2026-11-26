@@ -141,7 +141,7 @@ try {
   window.fetch = async (url) => {
     const u = String(url);
     if (u.includes('generativelanguage') && u.includes(':generateContent')) return json(200, { candidates: [{ content: { parts: [{ text: 'ok' }] } }] });
-    if (u.includes('generativelanguage/models')) return json(200, { models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }] });
+    if (u.includes('generativelanguage') && u.includes('/models')) return json(200, { models: [{ name: 'models/gemini-2.5-flash', supportedGenerationMethods: ['generateContent'] }] });
     if (u.includes('api.groq.com') && u.includes('/models')) return json(200, { data: [{ id: 'llama-3.3-70b-versatile' }] });
     if (u.includes('api.groq.com')) return json(200, { choices: [{ message: { content: 'ok' } }] });
     if (u.includes('openrouter.ai/api/models')) return json(200, { data: [{ id: 'meta-llama/llama-3.3-70b-instruct:free' }] });
