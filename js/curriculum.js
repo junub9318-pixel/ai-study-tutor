@@ -6,7 +6,7 @@
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, generateText, parseJSON,
   getKey, getSetup, fastModel,
-} from './core.js?v=15b98fd0'
+} from './core.js?v=5e94bbb6'
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -265,8 +265,10 @@ async function requestAI(subjectId, learner, materials, { signal, tb = {}, timeo
   ].join('\n');
   const system = hasTb ? TEXTBOOK_SYSTEM : CUR_SYSTEM;
   const maxTopics = hasTb ? 12 : 8;
+  // 교과서·자료가 있을 때만 검색(정확도) — 교육과정만 볼 때는 빠른 프롬프트로 끝낸다
+  const wantGround = hasTb || (materials || []).length > 0;
 
-  if (groundingSupported !== false) {
+  if (wantGround && groundingSupported !== false) {
     try {
       onProgress && onProgress('search');
       const out = await groundedJSON({

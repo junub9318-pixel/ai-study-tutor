@@ -7,21 +7,21 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=15b98fd0';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=15b98fd0';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=15b98fd0';
+} from './core.js?v=5e94bbb6';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=5e94bbb6';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=5e94bbb6';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=15b98fd0';
+} from './curriculum.js?v=5e94bbb6';
 import {
   CURRICULUM_OPTIONS, CUSTOM_CURRICULUM, curriculumOptions, recommendCurriculum, curriculumHint,
   normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=15b98fd0';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=15b98fd0';
+} from './textbook.js?v=5e94bbb6';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=5e94bbb6';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=15b98fd0';
+} from './routine.js?v=5e94bbb6';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
