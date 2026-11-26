@@ -5,7 +5,7 @@
    ========================================================= */
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup,
-} from './core.js?v=827d81c6';
+} from './core.js?v=0b39a62c';
 
 export const CUR_SCHEMA = {
   type: 'object',

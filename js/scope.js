@@ -3,20 +3,20 @@
    · 자료를 읽어 시험 범위 파악 → 사전 질문 → 듀오링고식 레슨 경로 생성
    ========================================================= */
 import {
-  state, load, getSetup, saveSetup, getScope, saveScope, getDifficulty, DIFFICULTY_LEVELS,
+  K, state, load, getSetup, saveSetup, getScope, saveScope, getDifficulty, DIFFICULTY_LEVELS,
   escapeHtml, toast, openModal, uid, dayKey, dday, hasKey, saveMaterials,
-} from './core.js?v=827d81c6';
-import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=827d81c6';
-import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=827d81c6';
-import { applyLessonPath, renderCourse } from './course.js?v=827d81c6';
+} from './core.js?v=0b39a62c';
+import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=0b39a62c';
+import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=0b39a62c';
+import { applyLessonPath, renderCourse } from './course.js?v=0b39a62c';
 
 const el = (id) => document.getElementById(id);
 
 /* course.js 의 courseId() 와 같은 규칙 */
 function subjectKey() {
   try {
-    const raw = load('aitutor.v1.subject', 'math');
-    if (raw === 'custom') return 'custom:' + String(load('aitutor.v1.customSubject', '') || '');
+    const raw = load(K.subject, 'math');
+    if (raw === 'custom') return 'custom:' + String(load(K.custom, '') || '');
     return String(raw);
   } catch (e) { return 'math'; }
 }
@@ -80,6 +80,7 @@ export function renderScopeCard() {
       <button class="scope-btn" id="scopePdf" type="button"><span>📄</span>PDF 올리기</button>
       <button class="scope-btn" id="scopePhoto" type="button"><span>🖼️</span>필기 사진 올리기</button>
       <button class="scope-btn ghost" id="scopeNoFile" type="button"><span>✍️</span>PDF나 사진이 없어요</button>
+      ${sc.scopeText ? '<button class="scope-btn ghost" id="scopeRegen" type="button"><span>🔄</span>사전 질문 다시 · 경로 재생성</button>' : ''}
     </div>
     <div class="status" id="scopeStatus" hidden></div>
     <p class="scope-fine" id="scopeFine">${sc.pathTitle ? `마지막 경로: ${escapeHtml(sc.pathTitle)}` : '자료 없이 시험 범위만 적어도 개념부터 문제까지 레슨을 만들어요.'}</p>
@@ -101,6 +102,9 @@ function bindScopeCard(host, key, sc) {
   host.querySelector('#scopePdf')?.addEventListener('click', () => pickFiles('pdf', key, setStatus, clearStatus));
   host.querySelector('#scopePhoto')?.addEventListener('click', () => pickFiles('photo', key, setStatus, clearStatus));
   host.querySelector('#scopeNoFile')?.addEventListener('click', () => openScopeQuestion(key));
+  host.querySelector('#scopeRegen')?.addEventListener('click', () => openScopeQuestions({
+    key, scopeText: sc.scopeText, units: sc.units, title: sc.pathTitle || sc.title, source: sc.source,
+  }));
   host.querySelectorAll('[data-delmat]').forEach(b => b.addEventListener('click', () => {
     state.materials = state.materials.filter(m => m.id !== b.dataset.delmat);
     saveMaterials();
