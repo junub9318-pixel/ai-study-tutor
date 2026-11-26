@@ -1,13 +1,13 @@
 /* =========================================================
    home.js — 대시보드 (오늘 목표 · 스트릭 · 리그 요약 · 챌린지)
    ========================================================= */
-import { K, state, load, save, $, escapeHtml, fmt, toast, openModal, dayKey } from './core.js?v=422ee01a';
+import { K, state, load, save, $, escapeHtml, fmt, toast, openModal, dayKey } from './core.js?v=fa63af88';
 import {
   profile, weeklyXP, xpToday, goal, setGoal, currentStreak, bestStreak, tierFor, TIERS,
   leaderboard, BADGES, isBadgeOn, dailySeries,
-} from './gamify.js?v=422ee01a';
-import { dailyChallengeSummary, dailyDoneToday, startDaily } from './quiz.js?v=422ee01a';
-import { showView } from './ui.js?v=422ee01a';
+} from './gamify.js?v=fa63af88';
+import { dailyChallengeSummary, dailyDoneToday, startDaily } from './quiz.js?v=fa63af88';
+import { showView } from './ui.js?v=fa63af88';
 
 const el = (id) => document.getElementById(id);
 
