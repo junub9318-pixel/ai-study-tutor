@@ -4,12 +4,12 @@
 import {
   K, state, load, save, $, escapeHtml, renderRich, toSpeech, streamChat, tutorSystem,
   currentSubject, subjectKey, hasKey, openModal, toast, uid, materialContext, ApiError,
-} from './core.js?v=31ac5e70';
+} from './core.js?v=e3dafd3b';
 import {
   speak, stopSpeaking, listen, sttSupported, ttsSupported, readImageFile, fileToMaterial,
   openMaterialsModal, scrollToBottom, toastCopy, setStatus,
-} from './ui.js?v=31ac5e70';
-import { awardXP, bump, profile } from './gamify.js?v=31ac5e70';
+} from './ui.js?v=e3dafd3b';
+import { awardXP, bump, profile } from './gamify.js?v=e3dafd3b';
 
 let chats = load(K.chats, {});
 let controller = null;
@@ -118,6 +118,8 @@ function renderChat() {
   host.innerHTML = '';
   list.forEach(m => host.appendChild(msgNode(m)));
   scrollToBottom(el('chatScroll'));
+  requestAnimationFrame(() => scrollToBottom(el('chatScroll')));
+  setTimeout(() => scrollToBottom(el('chatScroll')), 180);
 }
 
 function renderSuggestions() {
@@ -202,7 +204,7 @@ function openAttachMaterialPicker() {
         try {
           const mat = await fileToMaterial(f);
           if (mat && mat.kind !== 'img') {
-            const { addMaterial } = await import('./ui.js?v=31ac5e70');
+            const { addMaterial } = await import('./ui.js?v=e3dafd3b');
             addMaterial(mat);
             selected.add(mat.id);
           }
@@ -500,7 +502,7 @@ export function initTutor() {
     for (const f of Array.from(e.target.files || [])) {
       try {
         const mat = await fileToMaterial(f);
-        if (mat) { const { addMaterial } = await import('./ui.js?v=31ac5e70'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
+        if (mat) { const { addMaterial } = await import('./ui.js?v=e3dafd3b'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
       } catch (err) { toast(err.message, 'err'); }
     }
     e.target.value = '';

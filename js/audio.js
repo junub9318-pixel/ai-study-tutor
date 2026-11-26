@@ -5,12 +5,12 @@ import {
   K, state, load, save, $, escapeHtml, renderRich, toSpeech, generateJSON, openModal,
   PODCAST_SCHEMA, ORAL_Q_SCHEMA, ORAL_GRADE_SCHEMA, currentSubject, materialContext,
   uid, toast, dayKey,
-} from './core.js?v=31ac5e70';
+} from './core.js?v=e3dafd3b';
 import {
   loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials,
   speak, stopSpeaking, listen, sttSupported, ttsSupported, koVoice,
-} from './ui.js?v=31ac5e70';
-import { awardXP, awardBulk, bump } from './gamify.js?v=31ac5e70';
+} from './ui.js?v=e3dafd3b';
+import { awardXP, awardBulk, bump } from './gamify.js?v=e3dafd3b';
 
 const el = (id) => document.getElementById(id);
 let podMatSel = new Set();
