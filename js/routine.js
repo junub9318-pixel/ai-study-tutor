@@ -3,7 +3,7 @@
    · 30분 단위 · 최소 30분 ~ 최대 12시간
    · 온보딩 '하루 루틴' 단계와 설정 > 하루 학습 시간이 같은 컴포넌트를 쓴다
    ========================================================= */
-import { dday } from './core.js?v=5b70a238';
+import { dday } from './core.js?v=759cc446';
 
 export const STEP_MIN = 30;
 export const MIN_MINUTES = 30;

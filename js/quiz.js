@@ -3,9 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, renderRich, generateJSON, QUIZ_SCHEMA,
-  currentSubject, materialContext, uid, toast, dayKey, dateLabel, learnerContext,} from './core.js?v=5b70a238';
-import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=5b70a238';
-import { awardXP, awardBulk, bump } from './gamify.js?v=5b70a238';
+  currentSubject, materialContext, uid, toast, dayKey, dateLabel, learnerContext,} from './core.js?v=759cc446';
+import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=759cc446';
+import { awardXP, awardBulk, bump } from './gamify.js?v=759cc446';
 
 let active = null;      // 진행 중인 퀴즈
 let timerId = null;

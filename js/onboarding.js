@@ -7,21 +7,21 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=5b70a238';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=5b70a238';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=5b70a238';
+} from './core.js?v=759cc446';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=759cc446';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=759cc446';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=5b70a238';
+} from './curriculum.js?v=759cc446';
 import {
   CURRICULUM_OPTIONS, CUSTOM_CURRICULUM, curriculumOptions, recommendCurriculum, curriculumHint,
   normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=5b70a238';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=5b70a238';
+} from './textbook.js?v=759cc446';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=759cc446';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=5b70a238';
+} from './routine.js?v=759cc446';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
@@ -612,6 +612,14 @@ function stepSubjects() {
       const preview = el$('#onbSubPreview', body);
       const tbGrid = el$('#onbTbGrid', body);
 
+      const updatePreview = () => {
+        if (!preview) return;
+        const filled = draft.subjects.filter(id => draftTextbook(id).name).length;
+        preview.innerHTML = draft.subjects.length
+          ? `최종 <b>${draft.subjects.length}개</b> 과목 · 교과서 <b>${filled}개</b> 입력됨 — 학습 경로를 이 교과서 단원으로 만들어요.`
+          : '';
+      };
+
       const draw = () => {
         list.innerHTML = draft.subjects.length
           ? draft.subjects.map(id => `<div class="onb-subj-item" data-subj="${escapeHtml(id)}">
@@ -623,10 +631,7 @@ function stepSubjects() {
         const remain = SUBJECTS.filter(s => !draft.subjects.includes(s.id));
         addHost.innerHTML = remain.map(s => `<button class="onb-chip" data-add="${s.id}" type="button">＋ ${s.icon} ${s.label}</button>`).join('');
         if (tbGrid) tbGrid.innerHTML = tbHtml();
-        const filled = draft.subjects.filter(id => draftTextbook(id).name).length;
-        preview.innerHTML = draft.subjects.length
-          ? `최종 <b>${draft.subjects.length}개</b> 과목 · 교과서 <b>${filled}개</b> 입력됨 — 학습 경로를 이 교과서 단원으로 만들어요.`
-          : '';
+        updatePreview();
       };
       list.addEventListener('click', (e) => {
         const b = e.target.closest('[data-remove]');
@@ -672,6 +677,7 @@ function stepSubjects() {
           };
           if (draft.curriculums) delete draft.curriculums[id];
           draft.curriculumSig = '';
+          updatePreview();
         });
       }
       draw();
