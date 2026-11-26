@@ -899,23 +899,19 @@ html[data-theme="light"]{ --bg-grad:none; }
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 30px;
-  border-top-left-radius: 8px;
+  border-top-left-radius: 0;
   padding: 26px 18px 20px;
   box-shadow: var(--shadow);
 }
 .folder-tab{
-  position:absolute; bottom:100%; left:-1px;
+  position:absolute; bottom:100%; left:0;
   height: 66px; min-width: 46%;
   display:flex; align-items:center; gap:12px;
   padding: 10px 26px 10px 12px;
   background: var(--surface);
   border: 1px solid var(--border-soft); border-bottom: 0;
-  border-radius: 22px 26px 0 0;
+  border-radius: 26px 26px 0 0;
   z-index: 1;
-}
-.folder-tab::after{
-  content:""; position:absolute; right:-18px; bottom:0; width:18px; height:18px;
-  background: radial-gradient(circle at 0 0, transparent 18px, var(--surface) 18px);
 }
 .tab-ring{ position:relative; width:44px; height:44px; flex:none; }
 .tab-ring svg{ width:44px; height:44px; transform: rotate(-90deg); }
@@ -1184,7 +1180,7 @@ html[data-theme="light"]{ --bg-grad:none; }
 .exam-card{ margin-top: 66px; }
 @media (max-width: 420px){
   .exam-head h1{ font-size: 26px; }
-  .exam-card{ border-radius: 24px; border-top-left-radius: 8px; padding: 22px 14px 16px; }
+  .exam-card{ border-radius: 24px; border-top-left-radius: 0; padding: 22px 14px 16px; }
   .exam-body h2{ font-size: 22px; }
   .folder-tab{ height: 58px; min-width: 62%; padding: 8px 18px 8px 10px; }
   .tab-ring, .tab-ring svg{ width: 40px; height: 40px; }

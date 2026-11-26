@@ -4,13 +4,13 @@
 import {
   K, state, load, save, $, escapeHtml, fmt, toast, openModal, dayKey, weekStartKey,
   currentSubject, removeKey as _rk,
-} from './core.js?v=c570e724';
+} from './core.js?v=a59a745c';
 import {
   TIERS, tierFor, weeklyXP, totalXP, currentStreak, bestStreak, profile, leaderboard,
   friends, removeFriend, addFriendByCode, myCode, myLink, BADGES, isBadgeOn,
   unlockedBadges, emit,
-} from './gamify.js?v=c570e724';
-import { toastCopy } from './ui.js?v=c570e724';
+} from './gamify.js?v=a59a745c';
+import { toastCopy } from './ui.js?v=a59a745c';
 
 const el = (id) => document.getElementById(id);
 const EMOJIS = ['🐣', '🐼', '🦊', '🐧', '🐯', '🦉', '🐨', '🦄', '🚀', '📚', '🎧', '🧠', '⭐', '🍀', '🎓', '🔥'];
