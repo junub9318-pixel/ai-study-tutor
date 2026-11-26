@@ -5,18 +5,21 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=9e9b8848';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=9e9b8848';
-import { openDifficultyPrompt } from './difficulty.js?v=9e9b8848';
-import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=9e9b8848';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=9e9b8848';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=9e9b8848';
+} from './core.js?v=5b70a238';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=5b70a238';
+import { openDifficultyPrompt } from './difficulty.js?v=5b70a238';
+import { gradesFor, ageForGrade, subjectIcon, buildCurriculum } from './curriculum.js?v=5b70a238';
+import {
+  CURRICULUM_OPTIONS, curriculumOptions, getTextbook, setTextbook, normalizeTopics, bindUnitList, unitEditorHtml,
+} from './textbook.js?v=5b70a238';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=5b70a238';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula, applyCurriculum } from './course.js?v=5b70a238';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=9e9b8848';
-import { openOnboarding } from './onboarding.js?v=9e9b8848';
-import { createTimerWheel, clampMinutes } from './routine.js?v=9e9b8848';
+} from './sync.js?v=5b70a238';
+import { openOnboarding } from './onboarding.js?v=5b70a238';
+import { createTimerWheel, clampMinutes } from './routine.js?v=5b70a238';
 
 const el = (id) => document.getElementById(id);
 
@@ -32,10 +35,14 @@ function curMiniListHtml(subjIds) {
     const badge = c.updatedAt
       ? (c.source === 'ai' ? '<span class="cur-badge">AI</span>' : '<span class="cur-badge basic">기본</span>')
       : '<span class="cur-badge basic">전</span>';
+    const tb = [c.textbookName, c.publisher].filter(Boolean).join(' · ');
+    const units = Array.isArray(c.allTopics) ? c.allTopics.length : 0;
     return `<div class="cur-mini-row" data-cmrow="${escapeHtml(id)}">
       <span class="cm-ico">${c.icon}</span>
-      <div class="cm-main"><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.updatedAt ? c.unitTitle : '아직 확인하지 않았어요')}</small></div>
+      <div class="cm-main"><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.updatedAt ? c.unitTitle : '아직 확인하지 않았어요')}</small>
+        <small class="cm-tb">${tb ? '📗 ' + escapeHtml(tb) : '📗 교과서 미입력'}${units ? ` · 단원 ${units}개` : ''}</small></div>
       ${badge}
+      <button class="ghost-btn small" data-curedit="${escapeHtml(id)}" type="button">단원 편집</button>
     </div>`;
   }).join('');
 }
@@ -93,6 +100,127 @@ async function runCurriculumRefresh(host, subjIds, { silent = false } = {}) {
     if (btn) btn.disabled = false;
     if (save) save.disabled = false;
   }
+}
+
+/* ---------------- 교과서 · 단원 편집 모달 (설정) ---------------- */
+function openTextbookEditor(subjectId) {
+  const setup = getSetup() || {};
+  const c = courseCurriculum(subjectId);
+  const saved = getTextbook(subjectId);
+  const st = {
+    textbook: c.textbookName || saved.name || '',
+    publisher: c.publisher || saved.publisher || '',
+    curriculumName: c.curriculumName || setup.curriculum || '',
+    unitTitle: c.unitTitle || '',
+    source: c.source || 'basic',
+    confirmed: !!c.confirmed,
+    grounded: !!c.grounded,
+    topics: normalizeTopics(Array.isArray(c.allTopics) && c.allTopics.length ? c.allTopics : c.topics),
+  };
+
+  const modal = openModal(`
+    <div class="modal-head"><h2>${escapeHtml(c.label)} · 교과서와 단원</h2><button class="icon-btn" data-close type="button">✕</button></div>
+    <div class="modal-body">
+      <p class="hint">교과서명과 출판사를 넣고 <b>AI로 교과서 단원 찾기</b>를 누르면 Google 검색으로 그 교과서 목차를 확인해요. 단원을 누르면 선택/해제, ✕는 지우기, 맨 아래 칸은 직접 추가예요.</p>
+      <div class="tb-inputs tb-inputs-col">
+        <input class="onb-input" id="tbName" maxlength="40" placeholder="교과서명 (예: 공통수학 1)" value="${escapeHtml(st.textbook)}" />
+        <input class="onb-input" id="tbPub" maxlength="20" placeholder="출판사 (예: 비상교육)" value="${escapeHtml(st.publisher)}" />
+      </div>
+      <div class="row tight" style="margin-top:10px">
+        <button class="primary small" id="tbFind" type="button">🔎 AI로 교과서 단원 찾기</button>
+      </div>
+      <div class="status" id="tbStatus" hidden></div>
+      <p class="tb-sum" id="tbSum"></p>
+      <div id="tbUnits">${unitEditorHtml({ addPlaceholder: '단원 직접 추가 (예: 4. 도함수의 활용)' })}</div>
+      <div class="row tight" style="margin-top:12px">
+        <button class="primary small" id="tbSave" type="button">이 단원으로 저장</button>
+        <button class="ghost-btn small" data-close type="button">취소</button>
+      </div>
+    </div>`, { className: 'modal-tb' });
+
+  const root = modal.root;
+  const sum = root.querySelector('#tbSum');
+  const status = root.querySelector('#tbStatus');
+  const nameIn = root.querySelector('#tbName');
+  const pubIn = root.querySelector('#tbPub');
+
+  const drawSum = () => {
+    const all = normalizeTopics(st.topics);
+    const on = all.filter(t => t.on).length;
+    sum.innerHTML = `${st.curriculumName ? `📘 ${escapeHtml(st.curriculumName)} · ` : ''}배울 단원 <b>${on}</b> / ${all.length}`;
+  };
+  const editor = bindUnitList(root.querySelector('#tbUnits'), st, () => drawSum());
+  drawSum();
+
+  nameIn.addEventListener('input', () => { st.textbook = nameIn.value.trim(); });
+  pubIn.addEventListener('input', () => { st.publisher = pubIn.value.trim(); });
+
+  root.querySelector('#tbFind').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (!hasKey()) { toast('API 키를 연결하면 교과서 목차까지 확인해요.', 'info', 3000); return; }
+    btn.disabled = true;
+    btn.textContent = '찾는 중…';
+    status.hidden = false;
+    status.className = 'status';
+    status.innerHTML = `<span class="status-line"><span class="spinner"></span> Google 검색으로 <b>${escapeHtml(st.textbook || '교과서')}</b> 목차를 확인하는 중… (20초 안팍 걸릴 수 있어요)</span>`;
+    try {
+      const cur = await buildCurriculum(subjectId, {
+        learner: Object.assign({}, setup, { textbook: st.textbook, publisher: st.publisher }),
+        materials: state.materials,
+        textbook: st.textbook,
+        publisher: st.publisher,
+        onProgress: (stage) => {
+          if (stage === 'noground') status.innerHTML = '<span class="status-line"><span class="spinner"></span> 검색 결과가 없어 AI 지식으로 단원을 구성하는 중…</span>';
+        },
+      });
+      st.curriculumName = cur.curriculumName || st.curriculumName;
+      st.unitTitle = cur.unitTitle || st.unitTitle;
+      st.source = cur.source || 'basic';
+      st.confirmed = !!cur.confirmed;
+      st.grounded = !!cur.grounded;
+      st.topics = normalizeTopics(cur.topics);
+      if (cur.textbook) {
+        st.textbook = cur.textbook.name || st.textbook;
+        st.publisher = cur.textbook.publisher || st.publisher;
+        nameIn.value = st.textbook;
+        pubIn.value = st.publisher;
+      }
+      if (editor) editor.setTopics(st.topics);
+      drawSum();
+      status.className = cur.source === 'ai' ? 'status ok' : 'status';
+      status.innerHTML = cur.source === 'ai'
+        ? `<span class="status-line">✅ ${escapeHtml(st.textbook || '교과서')} 단원 <b>${normalizeTopics(st.topics).length}개</b>를 찾았어요${cur.confirmed ? ' (교과서 목차 확인)' : ' (검색 결과가 없어 교육과정 기준)'}. 배울 단원만 남겨 주세요.</span>`
+        : `<span class="status-line">📘 기본 교육과정 단원으로 채웠어요${cur.error ? ' · ' + escapeHtml(cur.error) : ''}.</span>`;
+    } catch (e) {
+      status.className = 'status err';
+      status.innerHTML = `<span class="status-line">❌ ${escapeHtml(e.message || '단원을 찾지 못했어요.')}</span>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔎 AI로 교과서 단원 찾기';
+    }
+  });
+
+  root.querySelector('#tbSave').addEventListener('click', () => {
+    const all = normalizeTopics(st.topics);
+    const kept = all.filter(t => t.on);
+    if (!kept.length) { toast('단원을 하나 이상 남겨 주세요.', 'err'); return; }
+    setTextbook(subjectId, { name: st.textbook, publisher: st.publisher });
+    applyCurriculum(subjectId, {
+      curriculumName: st.curriculumName,
+      unitTitle: st.unitTitle || kept[0].title,
+      source: st.source,
+      confirmed: st.confirmed,
+      grounded: st.grounded,
+      textbook: (st.textbook || st.publisher) ? { name: st.textbook, publisher: st.publisher } : null,
+      topics: kept,
+      allTopics: all.map(t => ({ title: t.title, focus: t.focus })),
+    });
+    saveSetup({ curriculumAt: Date.now() });
+    modal.close();
+    renderCourse();
+    renderSettings();
+    toast(`단원 ${kept.length}개로 학습 경로를 다시 맞췄어요`, 'xp', 3000);
+  });
 }
 
 export function renderSettings() {
@@ -153,6 +281,12 @@ export function renderSettings() {
             ${['기초', '보통', '심화'].map(c => `<option ${setup.levelSelf === c ? 'selected' : ''}>${c}</option>`).join('')}
           </select>
         </label>
+        <label class="field span2"><span>교육과정</span>
+          <input id="setCurriculum" list="setCurOptions" placeholder="예: 2022 개정 교육과정" maxlength="30" value="${escapeHtml(setup.curriculum || '')}" />
+          <datalist id="setCurOptions">
+            ${curriculumOptions(setup.country || '대한민국', setup.level || '고등학교').map(o => `<option value="${escapeHtml(o.value)}"></option>`).join('')}
+          </datalist>
+        </label>
         <label class="field span2"><span>학교명 (선택)</span>
           <input id="setSchool" placeholder="예: 세일고등학교" value="${escapeHtml(setup.school || '')}" />
         </label>
@@ -174,7 +308,7 @@ export function renderSettings() {
           </select>
         </label>
       </div>
-      <p class="set-note">${dd == null ? '시험 날짜를 넣으면 D-day와 학습 계획이 자동으로 맞춰져요.' : dd > 0 ? `시험까지 ${dd}일 남았어요.` : '시험 날짜가 지났어요. 새 날짜를 넣어 주세요.'}<br/>저장하면 바뀐 조건으로 AI가 교육과정(단원)을 자동으로 다시 확인해요.</p>
+      <p class="set-note">${dd == null ? '시험 날짜를 넣으면 D-day와 학습 계획이 자동으로 맞춰져요.' : dd > 0 ? `시험까지 ${dd}일 남았어요.` : '시험 날짜가 지났어요. 새 날짜를 넣어 주세요.'}<br/>저장하면 바뀐 조건으로 AI가 교육과정(단원)을 자동으로 다시 확인해요. 교과서·출판사는 아래 <b>AI 교육과정 → 단원 편집</b>에서 넣을 수 있어요.</p>
       <div class="row tight" style="margin-top:10px">
         <button class="primary small" id="setSave" type="button">설정 저장</button>
       </div>
@@ -183,7 +317,7 @@ export function renderSettings() {
     <!-- AI 교육과정 -->
     <div class="panel">
       <div class="panel-head tight"><b>AI 교육과정</b><span class="week-label" id="setCurWhen">${setup.curriculumAt ? fmtDate(setup.curriculumAt) + ' 확인' : '아직 확인 전'}</span></div>
-      <p class="set-note" style="margin-top:0">국가·학교급·학년·학교·과목에 맞춰 과목별 단원과 핵심 주제를 AI가 확인해 둡니다. 위 학습 정보를 고쳐 저장하면 바뀐 조건으로 자동으로 다시 확인해요.</p>
+      <p class="set-note" style="margin-top:0">국가·교육과정·학교급·학년·학교와 교과서에 맞춰 과목별 단원을 AI가 확인해 둡니다. 위 학습 정보를 고쳐 저장하면 바뀐 조건으로 자동으로 다시 확인하고, <b>단원 편집</b>에서 교과서·출판사를 넣고 배울 단원만 골라 둘 수 있어요.</p>
       <div class="cur-mini" id="setCurList">${curMiniListHtml(subjIds)}</div>
       <div class="row tight" style="margin-top:10px">
         <button class="ghost-btn small" id="setCurRefresh" type="button">🔄 AI로 다시 확인</button>
@@ -381,13 +515,14 @@ function bindSettings(host) {
       semester: host.querySelector('#setSemester').value,
       age: Number(host.querySelector('#setAge').value) || ageForGrade(host.querySelector('#setLevel').value, host.querySelector('#setGrade').value),
       levelSelf: host.querySelector('#setSelf').value,
+      curriculum: host.querySelector('#setCurriculum').value.trim(),
       school: host.querySelector('#setSchool').value.trim(),
       schoolNote: host.querySelector('#setSchoolNote').value.trim(),
       examDate: host.querySelector('#setExamDate').value || '',
       dailyMinutes: clampMinutes(Number(host.querySelector('#setMinutes').value || 60)),
       goalPct: Number(host.querySelector('#setGoal').value || 70),
     };
-    const keyOf = (s) => ['country', 'level', 'grade', 'semester', 'school', 'schoolNote'].map(k => String(s[k] || '')).join('|');
+    const keyOf = (s) => ['country', 'level', 'grade', 'semester', 'curriculum', 'school', 'schoolNote'].map(k => String(s[k] || '')).join('|');
     const changed = keyOf(before) !== keyOf(patch);
     saveSetup(patch);
     renderCourse();
@@ -405,6 +540,7 @@ function bindSettings(host) {
     const ids = (getSetup() || {}).subjects || [];
     runCurriculumRefresh(host, ids);
   });
+  host.querySelectorAll('[data-curedit]').forEach(b => b.addEventListener('click', () => openTextbookEditor(b.dataset.curedit)));
   host.querySelector('#setAddSubj')?.addEventListener('click', () => openAddSubjectModal());
   host.querySelectorAll('[data-diffset]').forEach(b => b.addEventListener('click', () => {
     openDifficultyPrompt({ subjectId: b.dataset.diffset, manual: true, onPick: () => renderSettings() });
@@ -422,7 +558,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=9e9b8848').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=5b70a238').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {

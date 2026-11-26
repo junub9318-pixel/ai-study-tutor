@@ -3,9 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, renderRich, generateJSON, CARDS_SCHEMA,
-  currentSubject, materialContext, uid, toast, learnerContext,} from './core.js?v=9e9b8848';
-import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=9e9b8848';
-import { awardXP, bump } from './gamify.js?v=9e9b8848';
+  currentSubject, materialContext, uid, toast, learnerContext,} from './core.js?v=5b70a238';
+import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=5b70a238';
+import { awardXP, bump } from './gamify.js?v=5b70a238';
 
 const STATUS = {
   unknown: { label: '모르겠음', icon: '❓', cls: 's0', xp: 2 },

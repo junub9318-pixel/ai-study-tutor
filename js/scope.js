@@ -5,10 +5,10 @@
 import {
   K, state, load, getSetup, saveSetup, getScope, saveScope, getDifficulty, DIFFICULTY_LEVELS,
   escapeHtml, toast, openModal, uid, dayKey, dday, hasKey, saveMaterials,
-} from './core.js?v=9e9b8848';
-import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=9e9b8848';
-import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=9e9b8848';
-import { applyLessonPath, renderCourse } from './course.js?v=9e9b8848';
+} from './core.js?v=5b70a238';
+import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=5b70a238';
+import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=5b70a238';
+import { applyLessonPath, renderCourse } from './course.js?v=5b70a238';
 
 const el = (id) => document.getElementById(id);
 

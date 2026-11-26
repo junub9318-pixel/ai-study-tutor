@@ -5,14 +5,15 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=9e9b8848';
-import { showView, openKeyModal } from './ui.js?v=9e9b8848';
-import { openDifficultyPrompt } from './difficulty.js?v=9e9b8848';
+} from './core.js?v=5b70a238';
+import { showView, openKeyModal } from './ui.js?v=5b70a238';
+import { openDifficultyPrompt } from './difficulty.js?v=5b70a238';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=9e9b8848';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=9e9b8848';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=9e9b8848';
+} from './gamify.js?v=5b70a238';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=5b70a238';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=5b70a238';
+import { getTextbook, normalizeTopics } from './textbook.js?v=5b70a238';
 
 const el = (id) => document.getElementById(id);
 
@@ -515,11 +516,19 @@ export function applyCurriculum(subjectId, cur) {
       completedAt: 0,
     };
   });
+  const tb = cur.textbook || null;
   const c = {
     subjectId,
     unitTitle: String(cur.unitTitle || prev.unitTitle || '나의 학습 코스').trim(),
     curriculumName: String(cur.curriculumName || '').trim(),
     source: cur.source === 'ai' ? 'ai' : 'basic',
+    textbookName: String((tb && tb.name) || cur.textbookName || '').trim(),
+    publisher: String((tb && tb.publisher) || cur.publisher || '').trim(),
+    confirmed: !!cur.confirmed,
+    grounded: !!cur.grounded,
+    // 단원 선택/삭제에 쓸 수 있게 선택된 목록과 전체 목록을 함께 둔다
+    topics: normalizeTopics(cur.topics),
+    allTopics: normalizeTopics(cur.allTopics && cur.allTopics.length ? cur.allTopics : cur.topics),
     updatedAt: Date.now(),
     lessons,
     createdAt: prev.createdAt || Date.now(),
@@ -532,6 +541,10 @@ export function applyCurriculum(subjectId, cur) {
 /** 코스에 저장된 교육과정 요약 */
 export function courseCurriculum(subjectId = courseId()) {
   const c = getCourse(subjectId);
+  const topics = (c.lessons || []).map(l => ({
+    title: String(l.title || '').replace(/^\d+\.\s*/, ''),
+    sub: l.sub || '',
+  }));
   return {
     subjectId,
     label: subjectLabel(subjectId),
@@ -540,10 +553,12 @@ export function courseCurriculum(subjectId = courseId()) {
     curriculumName: c.curriculumName || '',
     source: c.source || (c.ai ? 'ai' : 'basic'),
     updatedAt: c.updatedAt || 0,
-    topics: (c.lessons || []).map(l => ({
-      title: String(l.title || '').replace(/^\d+\.\s*/, ''),
-      sub: l.sub || '',
-    })),
+    textbookName: c.textbookName || '',
+    publisher: c.publisher || '',
+    confirmed: !!c.confirmed,
+    grounded: !!c.grounded,
+    allTopics: Array.isArray(c.allTopics) && c.allTopics.length ? c.allTopics : topics,
+    topics,
   };
 }
 
@@ -555,7 +570,11 @@ export async function refreshCurricula(subjectIds, { learner, onProgress } = {})
     const id = ids[i];
     const label = subjectLabel(id);
     onProgress && onProgress({ phase: 'start', subjectId: id, label, index: i, total: ids.length });
-    const cur = await buildCurriculum(id, { learner, materials: state.materials });
+    const tb = getTextbook(id);
+    const cur = await buildCurriculum(id, {
+      learner: learner || getSetup(), materials: state.materials,
+      textbook: tb.name, publisher: tb.publisher,
+    });
     out[id] = applyCurriculum(id, cur) || cur;
     onProgress && onProgress({ phase: 'done', subjectId: id, label, index: i, total: ids.length, cur: out[id] });
   }
@@ -566,7 +585,8 @@ export async function refreshCurricula(subjectIds, { learner, onProgress } = {})
 
 export async function generateCurriculum() {
   const id = courseId();
-  const cur = await buildCurriculum(id, { materials: state.materials });
+  const tb = getTextbook(id);
+  const cur = await buildCurriculum(id, { materials: state.materials, textbook: tb.name, publisher: tb.publisher });
   if (!cur || !cur.topics || !cur.topics.length) throw new Error('단원을 만들지 못했어요. 다시 시도해 주세요.');
   applyCurriculum(id, cur);
   renderCourse();

@@ -4,8 +4,9 @@
    · 키가 없거나 오프라인일 때는 기본 교육과정 안내
    ========================================================= */
 import {
-  SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup, fastModel,
-} from './core.js?v=9e9b8848';
+  SUBJECTS, subjectById, learnerContextFrom, generateJSON, generateText, parseJSON,
+  getKey, getSetup, fastModel,
+} from './core.js?v=5b70a238'
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -20,6 +21,9 @@ export const CUR_SCHEMA = {
         required: ['title'],
       },
     },
+    textbookName: { type: 'string' },
+    publisher: { type: 'string' },
+    confirmed: { type: 'boolean' },
     note: { type: 'string' },
   },
   required: ['unitTitle', 'topics'],
@@ -163,8 +167,10 @@ function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
    --------------------------------------------------------- */
 function learnerLines(learner) {
   const s = learner || getSetup() || {};
+  const curriculum = s.curriculum || (s.schoolInfo && s.schoolInfo.curriculumName) || '';
   return [
-    `- 국가·교육과정: ${s.country || '대한민국'}`,
+    `- 국가: ${s.country || '대한민국'}`,
+    curriculum ? `- 교육과정: ${curriculum}` : '',
     `- 학교급·학년: ${[s.level, s.grade].filter(Boolean).join(' ') || '고등학교 1학년'}`,
     `- 학기: ${s.semester || '1학기'}`,
     s.age ? `- 나이: 만 ${s.age}세` : '',
@@ -176,11 +182,12 @@ function learnerLines(learner) {
   ].filter(Boolean).join('\n');
 }
 
-const CUR_SYSTEM = `너는 학교 교육과정에 정통한 학습 설계자다. 학생의 국가·학교급·학년·학교 정보를 보고, 한 과목에서 지금 배우는(또는 곧 배울) 단원과 핵심 주제를 정리한다.
+const CUR_SYSTEM = `너는 학교 교육과정에 정통한 학습 설계자다. 학생의 국가·교육과정·학교급·학년·학교 정보를 보고, 한 과목에서 지금 배우는(또는 곧 배울) 단원과 핵심 주제를 정리한다.
 
 규칙:
-- 그 나라의 실제 교육과정(대한민국이면 2022 개정 교육과정 등)의 단원 구성과 용어를 따른다. 학교명·교육과정 메모가 있으면 그 학교의 편성(예: 공통수학 1·2)을 우선한다.
+- 학생이 고른 교육과정(- 교육과정)이 있으면 그것을 최우선으로 따른다. 예: "2022 개정 교육과정"이면 2022 개정의 단원 구성·용어를 쓴다. 없으면 그 나라의 실제 교육과정(대한민국이면 2022 개정 교육과정 등)을 따른다. 학교명·교육과정 메모가 있으면 그 학교의 편성(예: 공통수학 1·2)을 우선한다.
 - curriculumName: 근거가 되는 교육과정 이름 (예: "2022 개정 교육과정 · 공통수학 1"). 30자 이내.
+- 학생이 교육과정을 골랐으면 curriculumName 앞부분에 그 이름을 그대로 쓴다.
 - unitTitle: 지금 배우는 단원(또는 학기 범위)의 이름. 25자 이내, 교과서 단원명처럼.
 - topics: 핵심 주제 7개. 앞에서 뒤로 갈수록 심화된다. title은 22자 이내, focus는 한 줄 설명(20자 이내). 실제 단원명·개념명을 쓴다.
 - note: 이 구성이 어떤 근거인지 한 문장(선택).
@@ -188,69 +195,122 @@ const CUR_SYSTEM = `너는 학교 교육과정에 정통한 학습 설계자다.
 
 let groundingSupported = null; // null = 아직 모름, false = 이 키/모델에서 검색 grounding 불가
 
-function normalize(data, subjectId) {
+function isFatalError(e) {
+  return !!e && (e.code === 'bad_key' || e.code === 'no_key' || e.code === 'forbidden');
+}
+function isEnvError(e) {
+  return !!e && (e.code === 'quota' || e.code === 'server' || e.code === 'network');
+}
+
+/**
+ * Google 검색 grounding으로 JSON을 받는다.
+ * 구조화 출력(responseSchema)은 검색 도구와 함께 쓸 수 없는 모델이 많아,
+ * 프롬프트로 JSON만 출력하게 하고 응답에서 JSON을 파싱한다.
+ */
+async function groundedJSON({ system, text, temperature = 0.3, maxTokens = 1800, timeoutMs = 22000, signal, model }) {
+  const raw = await generateText({
+    system, parts: [{ text }], temperature, maxTokens, tools: [{ google_search: {} }],
+    timeoutMs, signal, fast: true, model: model || fastModel(),
+  });
+  return parseJSON(raw);
+}
+
+const TEXTBOOK_SYSTEM = `너는 교과서 목차에 정통한 학습 설계자다. 학생의 교육과정·학교급·학년·학기와 교과서명·출판사를 보고, 그 교과서의 실제 목차(대단원·중단원)를 확인해 이번 학기 단원 목록을 만든다.
+
+규칙:
+- Google 검색으로 그 출판사의 그 교과서 목차를 찾아 확인한다. 확인되면 confirmed=true로 두고 textbookName·publisher를 검색 결과에 맞춰 다듬는다.
+- 검색 결과로 확인하지 못하면 학생의 교육과정(예: 2022 개정 교육과정)의 표준 목차로 채우되 confirmed=false로 두고 note에 그 사실을 밝힌다. 출판사별 차이를 지어내지 않는다.
+- topics: 교과서 목차의 단원 5~12개. 실제 단원명을 쓴다(예: "Ⅱ. 방정식과 부등식 — 복소수와 이차방정식"). focus는 그 단원의 핵심 개념 한 줄(20자 이내).
+- 1학기·2학기 구분이 교과서에 있으면 그 학기 범위를 우선한다.
+- curriculumName: 근거가 되는 교육과정 이름 (예: "2022 개정 교육과정 · 공통수학 1"). 30자 이내.
+- unitTitle: 이번 학기 범위를 한 줄로 (25자 이내, 예: "공통수학 1 · Ⅰ~Ⅲ단원").
+- 출력은 설명 없이 JSON 객체 하나만. 키: curriculumName, unitTitle, topics[{title, focus}], textbookName, publisher, confirmed, note.`;
+
+function normalize(data, subjectId, { tb = {}, grounded = false, maxTopics = 8 } = {}) {
   const topics = (data && Array.isArray(data.topics) ? data.topics : [])
-    .map(t => ({ title: String((t && t.title) || '').trim(), focus: String((t && t.focus) || '').trim() }))
+    .map(t => ({ title: String((t && t.title) || '').trim().slice(0, 60), focus: String((t && t.focus) || '').trim().slice(0, 80) }))
     .filter(t => t.title)
-    .slice(0, 7);
+    .slice(0, maxTopics);
   if (!topics.length) throw new Error('교육과정 주제를 받지 못했어요.');
   const fallback = basicCurriculum(subjectId);
+  const name = String((data && (data.textbookName || data.textbook)) || tb.name || '').trim().slice(0, 40);
+  const publisher = String((data && data.publisher) || tb.publisher || '').trim().slice(0, 20);
   return {
     curriculumName: String((data && data.curriculumName) || fallback.curriculumName || '교육과정').trim().slice(0, 40),
     unitTitle: String((data && data.unitTitle) || fallback.unitTitle).trim().slice(0, 40),
     topics,
-    note: String((data && data.note) || '').trim().slice(0, 120),
+    note: String((data && data.note) || '').trim().slice(0, 160),
+    textbookName: name,
+    publisher,
+    textbook: (name || publisher) ? { name, publisher } : null,
+    confirmed: !!(data && data.confirmed),
+    grounded: !!grounded,
     source: 'ai',
   };
 }
 
-async function requestAI(subjectId, learner, materials, signal) {
+/** 한 과목 교육과정·교과서 단원 요청 (검색 grounding 먼저 → 실패하면 프롬프트만) */
+async function requestAI(subjectId, learner, materials, { signal, tb = {}, timeoutMs, onProgress } = {}) {
   const label = subjectLabel(subjectId);
   const mat = (materials || []).slice(0, 3)
     .map(m => `- ${m.name}: ${String(m.text || '').slice(0, 700)}`)
     .join('\n');
+  const hasTb = !!(tb.name || tb.publisher);
   const user = [
     `과목: ${label}`,
+    hasTb ? `교과서: ${tb.name || '(이름 모름)'}${tb.publisher ? ` / 출판사: ${tb.publisher}` : ' / 출판사 모름'}` : '교과서: (아직 모름 — 교육과정 기준으로)',
     '학생 정보:',
     learnerLines(learner),
     mat ? `\n학생이 올린 자료(단원명이 있으면 우선 반영):\n${mat}` : '',
   ].join('\n');
-  const base = { system: CUR_SYSTEM, parts: [{ text: user }], schema: CUR_SCHEMA, temperature: 0.35, maxTokens: 1200, signal };
+  const system = hasTb ? TEXTBOOK_SYSTEM : CUR_SYSTEM;
+  const maxTopics = hasTb ? 12 : 8;
 
   if (groundingSupported !== false) {
     try {
-      const out = await generateJSON({ ...base, tools: [{ google_search: {} }] });
+      onProgress && onProgress('search');
+      const out = await groundedJSON({
+        system, text: user, timeoutMs: timeoutMs || (hasTb ? 22000 : 16000), signal,
+      });
       groundingSupported = true;
-      return normalize(out, subjectId);
+      return normalize(out, subjectId, { tb, grounded: true, maxTopics });
     } catch (e) {
       if (e && e.name === 'AbortError') throw e;
-      if (e && (e.code === 'bad_key' || e.code === 'no_key' || e.code === 'forbidden')) throw e;
-      if (e && (e.code === 'quota' || e.code === 'server' || e.code === 'network')) throw e;
-      groundingSupported = false; // 이 환경에서는 검색 도구를 쓰지 않고 프롬프트만으로
+      if (isFatalError(e) || isEnvError(e)) throw e;
+      // 검색 결과 형식·도구 미지원 → 검색 없이 다시
+      if (e && (e.code === 'bad_request' || e.code === 'no_model' || e.code === 'parse')) groundingSupported = false;
+      onProgress && onProgress('noground');
     }
   }
-  const out = await generateJSON(base);
-  return normalize(out, subjectId);
+  const out = await generateJSON({
+    system, parts: [{ text: user }], schema: CUR_SCHEMA, temperature: 0.35, maxTokens: 1800,
+    signal, timeoutMs: timeoutMs || 14000,
+  });
+  return normalize(out, subjectId, { tb, grounded: false, maxTopics });
 }
 
 /**
- * 한 과목의 교육과정을 만든다. 절대 throw 하지 않는다(실패 시 기본 교육과정 + error).
- * @returns {Promise<{curriculumName,unitTitle,topics,source,note,error?}>}
+ * 한 과목의 교육과정(단원)을 만든다. 절대 throw 하지 않는다(실패 시 기본 교육과정 + error).
+ * @param {object} opts { learner, materials, textbook, publisher, signal, timeoutMs, onProgress }
+ * @returns {Promise<{curriculumName,unitTitle,topics,source,note,textbook,confirmed,grounded,error?}>}
  */
-export async function buildCurriculum(subjectId, { learner, materials = [], signal } = {}) {
+export async function buildCurriculum(subjectId, { learner, materials = [], textbook, publisher, signal, timeoutMs, onProgress } = {}) {
   if (!getKey()) {
     const b = basicCurriculum(subjectId);
     b.reason = 'no-key';
+    if (textbook || publisher) b.textbook = { name: String(textbook || ''), publisher: String(publisher || '') };
     return b;
   }
+  const tb = { name: String(textbook || '').trim(), publisher: String(publisher || '').trim() };
   try {
-    const cur = await requestAI(subjectId, learner, materials, signal);
+    const cur = await requestAI(subjectId, learner, materials, { signal, tb, timeoutMs, onProgress });
     return cur;
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
     const b = basicCurriculum(subjectId);
     b.reason = 'error';
     b.error = (e && e.message) || 'AI 교육과정을 받지 못했어요.';
+    if (tb.name || tb.publisher) b.textbook = tb;
     return b;
   }
 }
@@ -356,13 +416,15 @@ export function basicSchoolInfo(info = {}) {
   const grade = info.grade || '1학년';
   const semester = info.semester || '1학기';
   const names = BASIC_SUBJECTS_BY_LEVEL[level] || BASIC_SUBJECTS_BY_LEVEL['고등학교'];
-  const curriculumName = country === '대한민국' ? (level === '고등학교' ? '2022 개정 교육과정' : '기본 교육과정') : `${country} 국가 교육과정`;
+  const picked = String(info.curriculum || '').trim();
+  const curriculumName = picked || (country === '대한민국' ? (level === '고등학교' ? '2022 개정 교육과정' : '기본 교육과정') : `${country} 국가 교육과정`);
   return {
     found: false,
     verified: false,
     schoolName: info.school || '',
     region: '',
     schoolType: level,
+    curriculum: curriculumName,
     curriculumName,
     summary: `${country} ${level} ${grade} ${semester} 기준입니다. ${info.school ? info.school + '의 ' : ''}${curriculumName}에서 이 학기에 배우는 과목은 ${names.join('·')} 등입니다. AI 키를 연결하면 학교와 교육과정을 실제로 확인해 요약해 줘요.`,
     semesterFocus: `${semester} 중간·기말 범위는 학교 교육과정 편성표와 교과서 목차로 확정해요.`,
@@ -372,13 +434,20 @@ export function basicSchoolInfo(info = {}) {
   };
 }
 
-/* 학교 확인용 — 검색 grounding 없이 짧은 프롬프트로 1~3초 안에 끝나게 한다 */
-const SCHOOL_SYSTEM_FAST = `너는 각국 학교 교육과정에 정통한 학습 설계자다. 입력된 국가·학교급·학년·나이·학기·학교명으로 그 학기 교육과정을 짧게 요약한다. 아는 것만 쓰고 지어내지 않는다.
-- found: 학교명이 실제 학교로 확인되면 true, 아니면 false.
-- curriculumName 40자 이내 · summary 3문장 이내 · semesterFocus 50자 이내 · note 한 줄.
-- subjects: 5~10개, name은 실제 교과명, kind는 "공통"·"선택"·"전공".`;
+/* 학교 확인용 — Google 검색 grounding으로 학교·교육과정을 실제로 확인한다.
+   검색이 느려도 정확도를 우선하므로 타임아웃을 넉넉히(22초) 준다. */
+const SCHOOL_SYSTEM = `너는 각국 학교 교육과정에 정통한 학습 설계자다. 학생이 입력한 국가·교육과정·학교급·학년·나이·학기·학교명을 보고 ① 학교를 확인하고 ② 그 학년·학기의 교육과정을 미리 파악해 요약한다.
 
-function normalizeSchool(data, info) {
+규칙:
+- Google 검색으로 학교를 찾아 확인한다. 학교명이 실제 학교로 확인되면 found=true로 두고 region(지역)·schoolType(설립 구분)을 채운다.
+- 검색으로 확인되지 않으면 found=false로 두고 입력한 이름을 그대로 schoolName에 쓰며 일반 교육과정으로 요약한다. 없는 학교 정보를 지어내지 않는다.
+- 학생이 고른 교육과정(입력의 "학생이 고른 교육과정")이 있으면 그것을 최우선으로 따른다. curriculumName은 그 이름으로 시작한다(예: "2022 개정 교육과정 · 고등학교 1학년"). 40자 이내.
+- summary: 이 학교·학년·학기의 교육과정을 3~4문장으로. 어떤 과목을 배우고, 무엇이 공통·선택인지, 평가 방식의 특징을 학생이 바로 이해할 수 있게.
+- semesterFocus: 이번 학기의 중점(예: "1학기 — 공통수학 1(다항식~이차함수), 통합과학 1~3단원"). 60자 이내.
+- subjects: 이 학년·학기에 실제로 배우는 과목 5~10개. name은 실제 교과명(예: "공통수학 1", "통합과학", "한국사"), kind는 "공통"·"선택"·"전공" 중 하나.
+- 확실하지 않은 내용은 일반적인 편성으로 채우고, 그렇게 채운 사실을 note에 밝힌다.`;
+
+function normalizeSchool(data, info, { grounded = false } = {}) {
   const base = basicSchoolInfo(info);
   const subjects = (data && Array.isArray(data.subjects) ? data.subjects : [])
     .map(s => ({
@@ -388,13 +457,16 @@ function normalizeSchool(data, info) {
     .filter(s => s.name)
     .slice(0, 12)
     .map(s => Object.assign(s, { id: subjectIdFromName(s.name) }));
+  const picked = String(info.curriculum || '').trim();
   return {
     found: !!(data && data.found),
     verified: true,
+    grounded: !!grounded,
     schoolName: String((data && data.schoolName) || info.school || '').trim(),
     region: String((data && data.region) || '').trim(),
     schoolType: String((data && data.schoolType) || info.level || '').trim(),
-    curriculumName: String((data && data.curriculumName) || base.curriculumName).trim().slice(0, 60),
+    curriculum: picked || String((data && data.curriculumName) || '').trim(),
+    curriculumName: String((data && data.curriculumName) || picked || base.curriculumName).trim().slice(0, 60),
     summary: String((data && data.summary) || base.summary).trim().slice(0, 700),
     semesterFocus: String((data && data.semesterFocus) || '').trim().slice(0, 160),
     subjects: subjects.length ? subjects : base.subjects,
@@ -405,14 +477,16 @@ function normalizeSchool(data, info) {
 
 /**
  * 학교·학년·학기 확인 + 교육과정 선파악. 절대 throw 하지 않는다.
- * 검색 grounding·모델 탐색 없이 이미 고른 Flash 모델을 바로 호출하고,
- * 8초 안에 답이 없으면 즉시 규칙 기반 기본 교육과정으로 넘긴다.
- * @returns {Promise<object>} {found, schoolName, region, curriculumName, summary, semesterFocus, subjects, source, error?}
+ * ① Google 검색 grounding(넉넉한 타임아웃)으로 학교·교육과정·과목을 확인하고
+ * ② 검색이 안 되면 검색 없이 AI 지식으로 한 번 더 시도한다.
+ * @param {object} opts { signal, timeoutMs = 22000, onProgress(state) }
+ * @returns {Promise<object>} {found, schoolName, region, curriculumName, summary, semesterFocus, subjects, source, grounded, error?}
  */
-export async function verifySchool(info = {}, { signal, timeoutMs = 8000 } = {}) {
+export async function verifySchool(info = {}, { signal, timeoutMs = 22000, onProgress } = {}) {
   if (!getKey()) return basicSchoolInfo(info);
   const user = [
     `국가: ${info.country || '대한민국'}`,
+    `학생이 고른 교육과정: ${info.curriculum || '(아직 모름 — 학년에 맞는 교육과정으로)'}`,
     `교육 단계: ${info.level || '고등학교'}`,
     `학년: ${info.grade || '1학년'}${info.age ? ` (만 ${info.age}세)` : ''}`,
     `학기: ${info.semester || '1학기'}`,
@@ -420,20 +494,34 @@ export async function verifySchool(info = {}, { signal, timeoutMs = 8000 } = {})
     info.schoolNote ? `학교 메모: ${info.schoolNote}` : '',
   ].filter(Boolean).join('\n');
   const base = {
-    system: SCHOOL_SYSTEM_FAST, parts: [{ text: user }], schema: SCHOOL_SCHEMA,
-    temperature: 0.3, maxTokens: 800, signal, timeoutMs, fast: true, model: fastModel(),
+    system: SCHOOL_SYSTEM, parts: [{ text: user }], temperature: 0.3, maxTokens: 1800,
+    signal, fast: true, model: fastModel(),
   };
   try {
-    const out = await generateJSON(base);
-    return normalizeSchool(out, info);
+    if (groundingSupported !== false) {
+      try {
+        onProgress && onProgress('search');
+        const raw = await generateText({ ...base, tools: [{ google_search: {} }], timeoutMs });
+        const data = parseJSON(raw);
+        groundingSupported = true;
+        return normalizeSchool(data, info, { grounded: true });
+      } catch (e) {
+        if (e && e.name === 'AbortError') throw e;
+        if (isFatalError(e) || isEnvError(e)) throw e;
+        if (e && (e.code === 'bad_request' || e.code === 'no_model' || e.code === 'parse')) groundingSupported = false;
+        onProgress && onProgress('noground');
+      }
+    }
+    const out = await generateJSON({ ...base, schema: SCHOOL_SCHEMA, timeoutMs: Math.min(14000, timeoutMs) });
+    return normalizeSchool(out, info, { grounded: false });
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
     const b = basicSchoolInfo(info);
     b.fastFallback = true;
     b.summary = String(b.summary).replace(/\s*AI 키를 연결하면[^.]*?\.\s*$/, '').trim();
-    b.note = '빠른 표시를 위해 기본 교육과정으로 먼저 채웠어요.';
+    b.note = '기본 교육과정 안내로 먼저 보여 드렸어요.';
     b.error = (e && e.code === 'timeout')
-      ? '8초 안에 AI 응답이 오지 않아 기본 교육과정으로 먼저 보여 드렸어요. “학교 확인”을 다시 누르면 새로 시도해요.'
+      ? 'AI 응답이 늦어 기본 교육과정으로 먼저 보여 드렸어요. "학교 확인"을 다시 누르면 새로 시도해요.'
       : ((e && e.message) || 'AI가 학교를 확인하지 못했어요.');
     return b;
   }

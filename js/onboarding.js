@@ -7,17 +7,21 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=9e9b8848';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=9e9b8848';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=9e9b8848';
+} from './core.js?v=5b70a238';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=5b70a238';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=5b70a238';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=9e9b8848';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=9e9b8848';
+} from './curriculum.js?v=5b70a238';
+import {
+  CURRICULUM_OPTIONS, CUSTOM_CURRICULUM, curriculumOptions, recommendCurriculum, curriculumHint,
+  normalizeTopics, bindUnitList, unitEditorHtml,
+} from './textbook.js?v=5b70a238';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=5b70a238';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=9e9b8848';
+} from './routine.js?v=5b70a238';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
@@ -36,11 +40,15 @@ function defaults() {
     grade: '1학년',
     age: 16,
     semester: '1학기',
+    curriculum: '',
+    curriculumPick: '',
+    curriculumCustom: '',
     school: '',
     schoolNote: '',
     schoolInfo: null,
     subjects: ['korean', 'english', 'math', 'social', 'science', 'history', 'ai'],
     subjectNames: {},
+    textbooks: {},
     levelSelf: '보통',
     examDate: shiftDay(dayKey(), 21),
     goalPct: 70,
@@ -56,11 +64,18 @@ export function openOnboarding(force = false) {
   draft = defaults();
   if (!Array.isArray(draft.subjects) || !draft.subjects.length) draft.subjects = defaults().subjects.slice();
   draft.subjectNames = Object.assign({}, draft.subjectNames || {});
+  draft.textbooks = Object.assign({}, draft.textbooks || {});
   if (!draft.age) draft.age = ageForGrade(draft.level, draft.grade);
+  if (!draft.curriculumPick) {
+    draft.curriculumPick = recommendCurriculum({ country: draft.country, level: draft.level, grade: draft.grade });
+  }
+  draft.curriculumTouched = !!draft.curriculum;
+  if (!draft.curriculum) draft.curriculum = pickedCurriculum();
   step = 0;
   keyOk = hasKey();
   curToken++;
   draft.curriculums = null;
+  draft.curriculumSig = '';
   el('onboarding').hidden = false;
   render();
   return true;
@@ -74,6 +89,28 @@ export function initOnboarding() {
 
 const STEP_TITLES = ['AI 연결', '학교·학기', '수준·목표', '하루 루틴', '과목 확인', '단원 확인', '저장'];
 
+/** 지금 고른 교육과정 이름 (직접 입력이면 입력한 글자) */
+function pickedCurriculum() {
+  const pick = draft.curriculumPick || recommendCurriculum({ country: draft.country, level: draft.level, grade: draft.grade });
+  if (pick === CUSTOM_CURRICULUM) return String(draft.curriculumCustom || '').trim() || CUSTOM_CURRICULUM;
+  return pick;
+}
+
+/** 과목별 교과서·출판사 (draft) */
+function draftTextbook(id) {
+  const t = (draft.textbooks && draft.textbooks[id]) || {};
+  return { name: String(t.name || '').trim(), publisher: String(t.publisher || '').trim() };
+}
+
+/** 과목·교과서·학습 조건이 바뀌면 단원을 다시 확인해야 한다 */
+function curriculumSignature() {
+  return JSON.stringify({
+    c: pickedCurriculum(),
+    s: draft.subjects.map(id => [id, draftTextbook(id).name, draftTextbook(id).publisher]),
+    l: [draft.country, draft.level, draft.grade, draft.semester, draft.school, draft.schoolNote],
+  });
+}
+
 function setStepChrome() {
   el('onbFill').style.width = ((step + 1) / TOTAL * 100) + '%';
   el('onbStep').textContent = `${step + 1} / ${TOTAL}`;
@@ -83,6 +120,7 @@ function setStepChrome() {
   nextBtn.disabled = false;
   if (step === TOTAL - 1) nextBtn.textContent = '학습 시작하기';
   else if (step === TOTAL - 2) nextBtn.textContent = '이 교육과정으로 계속';
+  else if (step === 4) nextBtn.textContent = '교과서로 단원 확인';
   else if (step === 0 && !keyOk) nextBtn.textContent = '키 연결하기';
   else if (step === 1) nextBtn.textContent = draft.schoolInfo ? '이 학교·학기로 계속' : '학교 확인 후 계속';
   else nextBtn.textContent = '다음';
@@ -177,7 +215,7 @@ function schoolInfoSummaryHtml(info) {
           <b>${escapeHtml(info.schoolName || draft.school || '학교 정보 없이 진행')}</b>
           <small>${escapeHtml([info.region, info.schoolType].filter(Boolean).join(' · ') || draft.level + ' ' + draft.grade + ' · ' + draft.semester)}</small>
         </div>
-        <span class="cur-badge ${ai ? '' : 'basic'}">${ai ? (info.found ? 'AI 학교 확인' : 'AI 교육과정') : '기본 안내'}</span>
+        <span class="cur-badge ${ai ? '' : 'basic'}">${ai ? (info.found ? (info.grounded ? 'Google 검색 확인' : 'AI 학교 확인') : 'AI 교육과정') : '기본 안내'}</span>
       </div>
       <p class="school-sum">${escapeHtml(info.summary || '')}</p>
       ${info.semesterFocus ? `<p class="school-focus"><b>이번 학기</b> ${escapeHtml(info.semesterFocus)}</p>` : ''}
@@ -195,11 +233,14 @@ function schoolInfoSummaryHtml(info) {
 function stepSchool() {
   const grades = gradesFor(draft.level);
   if (!grades.includes(draft.grade)) draft.grade = grades[0];
+  const rec = recommendCurriculum({ country: draft.country, level: draft.level, grade: draft.grade });
+  const pick = draft.curriculumPick || rec;
+  const opts = curriculumOptions(draft.country, draft.level);
   return {
     html: () => `
       <p class="onb-eyebrow">STEP 2 · 학교와 학기</p>
       <h2 class="onb-title">어디서, 몇 학기에<br/>무엇을 배우나요?</h2>
-      <p class="onb-desc">국가·학년·나이·학기와 학교를 알려 주면, AI가 <b>그 학교의 이번 학기 교육과정을 먼저 확인</b>해 요약해 줘요. 확인한 내용은 과목과 단원을 정할 때 그대로 쓰입니다.</p>
+      <p class="onb-desc">교육과정을 먼저 정하고 학교를 확인해요. AI가 <b>그 학교의 이번 학기 교육과정과 과목</b>을 Google 검색으로 찾아 요약해 주고, 확인한 내용은 과목·교과서·단원을 정할 때 그대로 쓰여요.</p>
 
       <div class="onb-field"><label>공부하는 나라</label>
         <select class="onb-input" id="onbCountry">
@@ -233,12 +274,27 @@ function stepSchool() {
         </div>
       </div>
 
+      <div class="onb-field"><label>교육과정 <i class="field-hint">학교 검색 전에 먼저 정해요</i></label>
+        <div class="onb-cur-pick" id="onbCurPick">
+          ${opts.map(o => `<button class="onb-cur-btn ${pick === o.value ? 'on' : ''}" data-curpick="${escapeHtml(o.value)}" type="button">
+            <b>${escapeHtml(o.value)}</b><small>${escapeHtml(o.hint || '')}</small>${rec === o.value ? '<i class="onb-cur-rec">추천</i>' : ''}
+          </button>`).join('')}
+          <button class="onb-cur-btn ${pick === CUSTOM_CURRICULUM ? 'on' : ''}" data-curpick="${CUSTOM_CURRICULUM}" type="button">
+            <b>직접 입력</b><small>학교 자체 편성 · 기타 과정</small>
+          </button>
+        </div>
+        <div class="onb-custom-row" id="onbCurCustomRow" ${pick === CUSTOM_CURRICULUM ? '' : 'hidden'}>
+          <input class="onb-input" id="onbCurCustom" maxlength="30" placeholder="예: 2022 개정 교육과정 (학교 자율 편성)" value="${escapeHtml(draft.curriculumCustom || '')}" />
+        </div>
+        <p class="fine" id="onbCurHint">${escapeHtml(curriculumHint({ country: draft.country, level: draft.level, grade: draft.grade }))}</p>
+      </div>
+
       <div class="onb-field"><label>학교 검색 · 확인</label>
         <div class="onb-school-row">
           <input class="onb-input" id="onbSchool" placeholder="예: 세일고등학교" value="${escapeHtml(draft.school || '')}" />
           <button class="onb-check-btn" id="onbSchoolCheck" type="button">학교 확인</button>
         </div>
-        <p class="fine">학교를 넣으면 AI가 학교와 이 학기 교육과정을 찾아 확인해요. 학교를 모르면 비워 두고 확인해도 돼요.</p>
+        <p class="fine">AI가 Google 검색으로 학교와 이 학기 교육과정·과목을 찾아 확인해요. 정확히 찾느라 <b>20초 안팎</b> 걸릴 수 있어요. 학교를 모르면 비워 두고 확인해도 돼요.</p>
         <div class="status" id="onbSchoolStatus" hidden></div>
       </div>
 
@@ -255,6 +311,52 @@ function stepSchool() {
       const infoHost = el$('#onbSchoolInfo', body);
       const status = el$('#onbSchoolStatus', body);
       const checkBtn = el$('#onbSchoolCheck', body);
+      const curPickHost = el$('#onbCurPick', body);
+      const curCustomRow = el$('#onbCurCustomRow', body);
+      const curCustomInput = el$('#onbCurCustom', body);
+      const curHint = el$('#onbCurHint', body);
+
+      /* 교육과정 선택 UI를 현재 학년·국가 추천에 맞춰 다시 그린다 */
+      const syncCurUI = () => {
+        const rec = recommendCurriculum({ country: draft.country, level: draft.level, grade: draft.grade });
+        const pick = draft.curriculumPick || rec;
+        curPickHost.querySelectorAll('[data-curpick]').forEach(x => x.classList.toggle('on', x.dataset.curpick === pick));
+        if (curCustomRow) curCustomRow.hidden = pick !== CUSTOM_CURRICULUM;
+        if (curHint) curHint.textContent = curriculumHint({ country: draft.country, level: draft.level, grade: draft.grade });
+        curPickHost.querySelectorAll('.onb-cur-rec').forEach(i => i.remove());
+        const recBtn = Array.from(curPickHost.querySelectorAll('[data-curpick]')).find(x => x.dataset.curpick === rec);
+        if (recBtn) {
+          const i = document.createElement('i');
+          i.className = 'onb-cur-rec';
+          i.textContent = '추천';
+          recBtn.appendChild(i);
+        }
+        draft.curriculum = pickedCurriculum();
+      };
+      const refreshRecommendation = () => {
+        if (draft.curriculumTouched) { syncCurUI(); return; }
+        draft.curriculumPick = recommendCurriculum({ country: draft.country, level: draft.level, grade: draft.grade });
+        syncCurUI();
+      };
+
+      curPickHost.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-curpick]');
+        if (!b) return;
+        draft.curriculumPick = b.dataset.curpick;
+        draft.curriculumTouched = true;
+        if (draft.curriculumPick === CUSTOM_CURRICULUM && curCustomInput && !curCustomInput.value && draft.curriculumCustom) {
+          curCustomInput.value = draft.curriculumCustom;
+        }
+        syncCurUI();
+        invalidate();
+      });
+      if (curCustomInput) {
+        curCustomInput.addEventListener('input', () => {
+          draft.curriculumCustom = curCustomInput.value.trim();
+          syncCurUI();
+          invalidate();
+        });
+      }
 
       const invalidate = () => {
         if (draft.schoolInfo) {
@@ -280,8 +382,8 @@ function stepSchool() {
         syncAge();
       };
 
-      countrySel.addEventListener('change', () => { draft.country = countrySel.value; invalidate(); });
-      gradeSel.addEventListener('change', () => { draft.grade = gradeSel.value; syncAge(); invalidate(); });
+      countrySel.addEventListener('change', () => { draft.country = countrySel.value; refreshRecommendation(); invalidate(); });
+      gradeSel.addEventListener('change', () => { draft.grade = gradeSel.value; syncAge(); refreshRecommendation(); invalidate(); });
       ageSel.addEventListener('change', () => { draft.age = Number(ageSel.value); invalidate(); });
       schoolInput.addEventListener('input', () => { draft.school = schoolInput.value.trim(); invalidate(); });
       el$('#onbSchoolNote', body).addEventListener('input', (e) => { draft.schoolNote = e.target.value.trim(); });
@@ -292,6 +394,7 @@ function stepSchool() {
         draft.level = b.dataset.level;
         body.querySelectorAll('[data-level]').forEach(x => x.classList.toggle('on', x === b));
         rebuildGrades();
+        refreshRecommendation();
         invalidate();
       });
       el$('#onbSemester', body).addEventListener('click', (e) => {
@@ -302,34 +405,44 @@ function stepSchool() {
         invalidate();
       });
 
-      checkBtn.addEventListener('click', async () => {
+        checkBtn.addEventListener('click', async () => {
         draft.school = schoolInput.value.trim();
         draft.country = countrySel.value;
         draft.grade = gradeSel.value;
         draft.age = Number(ageSel.value) || ageForGrade(draft.level, draft.grade);
+        draft.curriculum = pickedCurriculum();
         checkBtn.disabled = true;
         checkBtn.classList.add('busy');
         checkBtn.textContent = '확인 중…';
         status.hidden = false;
         status.className = 'status';
-        status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${hasKey() ? 'AI가 학교와 이 학기 교육과정을 확인하는 중…' : '기본 교육과정을 준비하는 중…'}</span>`;
+        status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${hasKey() ? 'AI가 Google 검색으로 학교·교육과정·이번 학기 과목을 찾는 중… (20초 안팎 걸릴 수 있어요)' : '기본 교육과정을 준비하는 중…'}</span>`;
+        const setStage = (stage) => {
+          if (!hasKey()) return;
+          if (stage === 'noground') {
+            status.innerHTML = `<span class="status-line"><span class="spinner"></span> 검색 결과를 받지 못해 AI 지식으로 다시 확인하는 중…</span>`;
+          }
+        };
         try {
           const info = await verifySchool({
             country: draft.country, level: draft.level, grade: draft.grade, age: draft.age,
             semester: draft.semester, school: draft.school, schoolNote: draft.schoolNote,
-          });
+            curriculum: draft.curriculum,
+          }, { onProgress: setStage, timeoutMs: 22000 });
           draft.schoolInfo = info;
           infoHost.innerHTML = schoolInfoSummaryHtml(info);
           try { infoHost.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
           status.hidden = false;
           status.className = info.error ? 'status' : 'status ok';
           status.innerHTML = `<span class="status-line">${info.source === 'ai'
-            ? (info.found ? '✅ 학교와 교육과정을 확인했어요. 아래 요약을 확인하고 다음으로 넘어가세요.' : '✅ 교육과정을 확인했어요. 학교는 확인되지 않아 입력한 이름으로 진행해요.')
+            ? (info.found ? `✅ 학교와 교육과정을 확인했어요${info.grounded ? ' (Google 검색)' : ''}. 아래 요약을 확인하고 다음으로 넘어가세요.` : '✅ 교육과정을 확인했어요. 학교는 확인되지 않아 입력한 이름으로 진행해요.')
             : '📘 기본 교육과정으로 확인했어요. AI 키를 연결하면 학교·학기에 맞춰 다시 확인해요.'}</span>`;
           draft.subjects = (info.subjects || []).map(s => s.id || subjectIdFromName(s.name)).filter(Boolean);
           draft.subjects = Array.from(new Set(draft.subjects));
           draft.subjectNames = {};
           (info.subjects || []).forEach(s => { const id = s.id || subjectIdFromName(s.name); if (id) draft.subjectNames[id] = s.name; });
+          draft.curriculums = null;
+          draft.curriculumSig = '';
           setStepChrome();
         } catch (e) {
           draft.schoolInfo = null;
@@ -459,7 +572,22 @@ function subjectNameOf(id) {
 }
 
 function stepSubjects() {
-  const gradeLine = `${draft.country} · ${draft.level} ${draft.grade}${draft.age ? `(만 ${draft.age}세)` : ''} · ${draft.semester}`;
+  const gradeLine = `${draft.country} · ${draft.curriculum || pickedCurriculum()} · ${draft.level} ${draft.grade}${draft.age ? `(만 ${draft.age}세)` : ''} · ${draft.semester}`;
+  const tbHtml = () => draft.subjects.length
+    ? draft.subjects.map(id => {
+      const tb = draftTextbook(id);
+      return `<div class="tb-row" data-tbrow="${escapeHtml(id)}">
+        <span class="tb-ico">${subjectIcon(id)}</span>
+        <div class="tb-body">
+          <b class="tb-subj">${escapeHtml(subjectNameOf(id))}</b>
+          <div class="tb-inputs">
+            <input class="onb-input tb-input" data-tb-name="${escapeHtml(id)}" placeholder="교과서명 (예: 공통수학 1)" maxlength="40" value="${escapeHtml(tb.name)}" />
+            <input class="onb-input tb-input" data-tb-pub="${escapeHtml(id)}" placeholder="출판사 (예: 비상교육)" maxlength="20" value="${escapeHtml(tb.publisher)}" />
+          </div>
+        </div>
+      </div>`;
+    }).join('')
+    : '';
   return {
     html: () => `
       <p class="onb-eyebrow">STEP 5 · 과목 확인</p>
@@ -473,11 +601,16 @@ function stepSubjects() {
           <button class="ghost-btn" id="onbCustomAdd" type="button">추가</button>
         </div>
       </div>
+      <div class="onb-field"><label>교과서 · 출판사 <i class="field-hint">모르면 비워 둬도 돼요</i></label>
+        <p class="fine" style="margin:0 0 8px">교과서명과 출판사를 적으면 AI가 그 교과서의 <b>실제 목차(단원)</b>를 Google 검색으로 찾아 확인해요. 확인을 누르면 다음 화면에서 배울 단원만 골라요.</p>
+        <div class="tb-grid" id="onbTbGrid">${tbHtml()}</div>
+      </div>
       <p class="onb-preview" id="onbSubPreview"></p>`,
     bind: (body) => {
       const list = el$('#onbSubjList', body);
       const addHost = el$('#onbSubjAdd', body);
       const preview = el$('#onbSubPreview', body);
+      const tbGrid = el$('#onbTbGrid', body);
 
       const draw = () => {
         list.innerHTML = draft.subjects.length
@@ -489,8 +622,10 @@ function stepSubjects() {
           : '<p class="onb-empty">남은 과목이 없어요. 아래에서 하나 이상 추가해 주세요.</p>';
         const remain = SUBJECTS.filter(s => !draft.subjects.includes(s.id));
         addHost.innerHTML = remain.map(s => `<button class="onb-chip" data-add="${s.id}" type="button">＋ ${s.icon} ${s.label}</button>`).join('');
+        if (tbGrid) tbGrid.innerHTML = tbHtml();
+        const filled = draft.subjects.filter(id => draftTextbook(id).name).length;
         preview.innerHTML = draft.subjects.length
-          ? `최종 <b>${draft.subjects.length}개</b> 과목으로 학습 경로를 만들어요.`
+          ? `최종 <b>${draft.subjects.length}개</b> 과목 · 교과서 <b>${filled}개</b> 입력됨 — 학습 경로를 이 교과서 단원으로 만들어요.`
           : '';
       };
       list.addEventListener('click', (e) => {
@@ -498,6 +633,7 @@ function stepSubjects() {
         if (!b) return;
         draft.subjects = draft.subjects.filter(x => x !== b.dataset.remove);
         draft.curriculums = null;
+        draft.curriculumSig = '';
         draw();
       });
       addHost.addEventListener('click', (e) => {
@@ -506,6 +642,7 @@ function stepSubjects() {
         if (!draft.subjects.includes(b.dataset.add)) draft.subjects.push(b.dataset.add);
         draft.subjectNames[b.dataset.add] = subjectLabel(b.dataset.add);
         draft.curriculums = null;
+        draft.curriculumSig = '';
         draw();
       });
       el$('#onbCustomAdd', body).addEventListener('click', () => {
@@ -516,43 +653,84 @@ function stepSubjects() {
         if (!draft.subjects.includes(id)) { draft.subjects.push(id); draft.subjectNames[id] = v; }
         inp.value = '';
         draft.curriculums = null;
+        draft.curriculumSig = '';
         draw();
       });
       el$('#onbCustomSub', body).addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); el$('#onbCustomAdd', body).click(); }
       });
+      if (tbGrid) {
+        tbGrid.addEventListener('input', (e) => {
+          const nameIn = e.target.closest('[data-tb-name]');
+          const pubIn = e.target.closest('[data-tb-pub]');
+          if (!nameIn && !pubIn) return;
+          const id = nameIn ? nameIn.dataset.tbName : pubIn.dataset.tbPub;
+          const prev = draftTextbook(id);
+          draft.textbooks[id] = {
+            name: nameIn ? nameIn.value.trim() : prev.name,
+            publisher: pubIn ? pubIn.value.trim() : prev.publisher,
+          };
+          if (draft.curriculums) delete draft.curriculums[id];
+          draft.curriculumSig = '';
+        });
+      }
       draw();
     },
   };
 }
 
-/* ---------------- step 6 · 단원 확인 ---------------- */
+/* ---------------- step 6 · 단원 확인(선택 · 삭제) ---------------- */
+function curTbLine(id, cur) {
+  const tb = cur.textbook || draftTextbook(id);
+  const name = (tb && tb.name) || '';
+  const pub = (tb && tb.publisher) || '';
+  if (!name && !pub) return '';
+  return `<p class="cur-tb">📗 ${escapeHtml(name || '교과서 미입력')}${pub ? ' · ' + escapeHtml(pub) : ''}${cur.confirmed ? '<span class="cur-ok">목차 확인</span>' : ''}</p>`;
+}
+
 function curCardHtml(id, cur) {
   const badge = cur.source === 'ai'
-    ? '<span class="cur-badge">AI 확인</span>'
+    ? (cur.grounded ? '<span class="cur-badge">검색 확인</span>' : '<span class="cur-badge">AI 확인</span>')
     : '<span class="cur-badge basic">기본</span>';
-  const topics = (cur.topics || []).map((t, i) => `
-    <li><span class="n">${i + 1}</span><div><b>${escapeHtml(t.title || '')}</b>${t.focus ? `<span>${escapeHtml(t.focus)}</span>` : ''}</div></li>`).join('');
   return `<div class="cur-card" data-cur="${escapeHtml(id)}">
     <div class="cur-head">
       <span class="cur-ico">${subjectIcon(id)}</span>
       <div class="cur-title"><b>${escapeHtml(draft.subjectNames[id] || subjectLabel(id))}</b><small>${escapeHtml(cur.unitTitle || '')}</small></div>
       ${badge}
     </div>
-    <ol class="cur-topics">${topics}</ol>
+    ${curTbLine(id, cur)}
+    ${unitEditorHtml({ addPlaceholder: '단원 직접 추가 (예: 3. 도함수의 활용)' })}
     ${cur.curriculumName ? `<p class="cur-src">${escapeHtml(cur.curriculumName)}</p>` : ''}
   </div>`;
 }
 
 function curLoadingHtml(id) {
+  const tb = draftTextbook(id);
+  const what = tb.name ? `'${tb.name}' 교과서 목차를 검색하는 중…` : '교육과정을 확인하는 중…';
   return `<div class="cur-card loading" data-cur="${escapeHtml(id)}">
     <div class="cur-head">
       <span class="cur-ico">${subjectIcon(id)}</span>
-      <div class="cur-title"><b>${escapeHtml(draft.subjectNames[id] || subjectLabel(id))}</b><small>교육과정을 확인하는 중…</small></div>
+      <div class="cur-title"><b>${escapeHtml(draft.subjectNames[id] || subjectLabel(id))}</b><small>${escapeHtml(what)}</small></div>
       <span class="spinner"></span>
     </div>
     <div class="cur-skel"><i></i><i></i><i></i></div>
   </div>`;
+}
+
+function updateCurSummary() {
+  const box = el('onbCurSummary');
+  if (!box) return;
+  const ids = draft.subjects.slice();
+  let total = 0;
+  let on = 0;
+  ids.forEach(id => {
+    const cur = draft.curriculums && draft.curriculums[id];
+    if (!cur) return;
+    const topics = normalizeTopics(cur.topics);
+    total += topics.length;
+    on += topics.filter(t => t.on).length;
+  });
+  box.innerHTML = `과목 <b>${ids.length}개</b> · 배울 단원 <b>${on}개</b> 선택됨${total && on < total ? ` <span class="cur-off-count">(제외 ${total - on}개)</span>` : ''}`;
 }
 
 function drawCurriculum(list, status, note) {
@@ -562,43 +740,56 @@ function drawCurriculum(list, status, note) {
     const cur = draft.curriculums && draft.curriculums[id];
     return cur ? curCardHtml(id, cur) : curLoadingHtml(id);
   }).join('');
+  // 과목별 단원 편집기(선택/해제 · ✕ 삭제 · 직접 추가)
+  list.querySelectorAll('.cur-card[data-cur]').forEach(card => {
+    const id = card.dataset.cur;
+    const cur = draft.curriculums && draft.curriculums[id];
+    if (!cur) return;
+    const host = card.querySelector('.unit-editor');
+    if (host) bindUnitList(host, cur, updateCurSummary);
+  });
+  updateCurSummary();
+
   const built = draft.curriculums ? ids.filter(id => draft.curriculums[id]).length : 0;
   const ai = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].source === 'ai').length : 0;
+  const grounded = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].grounded).length : 0;
   if (status) {
     if (built < ids.length) {
       status.hidden = false;
       status.className = 'status';
-      status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${hasKey() ? 'AI가 학년·학기 교육과정을 확인하는 중…' : '기본 교육과정을 준비하는 중…'} <b>${built} / ${ids.length}</b></span>`;
+      const txt = hasKey() ? 'AI가 교육과정과 교과서 목차를 확인하는 중…' : '기본 교육과정을 준비하는 중…';
+      status.innerHTML = `<span class="status-line"><span class="spinner"></span> ${txt} <b>${built} / ${ids.length}</b></span>`;
     } else if (ai > 0) {
       status.hidden = false;
       status.className = 'status ok';
-      status.innerHTML = `<span class="status-line">✅ <b>${ai}개 과목</b>의 교육과정을 AI로 확인했어요${ai < ids.length ? ` · ${ids.length - ai}개는 기본 안내` : ''}</span>`;
+      status.innerHTML = `<span class="status-line">✅ <b>${ai}개 과목</b>의 단원을 확인했어요${grounded ? ` (Google 검색 ${grounded}개)` : ''}${ai < ids.length ? ` · ${ids.length - ai}개는 기본 안내` : ''} — 배울 단원만 남겨 주세요.</span>`;
     } else {
       status.hidden = false;
       status.className = 'status';
-      status.innerHTML = '<span class="status-line">📘 지금은 <b>기본 교육과정 안내</b>로 채웠어요. AI 키를 연결하면 학교·학년·학기에 맞춰 바로 다시 확인해요.</span>';
+      status.innerHTML = '<span class="status-line">📘 지금은 <b>기본 교육과정 안내</b>로 채웠어요. AI 키를 연결하면 교과서 목차까지 확인해요.</span>';
     }
   }
   if (note) {
     const failed = draft.curriculums ? ids.filter(id => draft.curriculums[id] && draft.curriculums[id].error) : [];
     note.textContent = failed.length
       ? `일부 과목(${failed.map(id => draft.subjectNames[id] || subjectLabel(id)).join(', ')})은 AI 확인에 실패해 기본 교육과정으로 채웠어요. 다시 확인해 보세요.`
-      : '확인한 단원은 시작한 뒤에도 설정 → AI 교육과정에서 언제든 다시 볼 수 있어요.';
+      : '단원을 누르면 선택/해제, ✕는 목록에서 지우기, 아래 칸은 직접 추가예요. 고른 단원만 홈 학습 경로에 쓰여요.';
   }
 }
 
 function stepCurriculum() {
-  const learnerLine = () => `${draft.country || '대한민국'} · ${[draft.level, draft.grade].filter(Boolean).join(' ')} · ${draft.semester}${draft.school ? ' · ' + escapeHtml(draft.school) : ''}`;
+  const learnerLine = () => `${draft.country || '대한민국'} · ${escapeHtml(draft.curriculum || pickedCurriculum())} · ${[draft.level, draft.grade].filter(Boolean).join(' ')} · ${draft.semester}${draft.school ? ' · ' + escapeHtml(draft.school) : ''}`;
   return {
     html: () => `
       <p class="onb-eyebrow">STEP 6 · 단원 확인</p>
-      <h2 class="onb-title">시작하기 전에,<br/>배울 단원부터 볼게요</h2>
-      <p class="onb-desc">${learnerLine()} 기준으로 과목별 교육과정(단원·핵심 주제)을 확인했어요. 구성이 다르면 다시 확인하거나, 시작한 뒤 설정에서 바꿀 수 있어요.</p>
+      <h2 class="onb-title">시작하기 전에,<br/>배울 단원만 골라요</h2>
+      <p class="onb-desc">${learnerLine()} 기준으로 AI가 <b>교과서 목차의 단원</b>을 찾아 왔어요. 단원을 눌러 선택/해제하고, 이번에 배우지 않는 단원은 ✕로 지우세요. 고른 단원만 홈 학습 경로에 들어가요.</p>
       <div class="status" id="onbCurStatus" hidden></div>
+      <p class="cur-summary" id="onbCurSummary"></p>
       <div class="onb-cur-list" id="onbCurList"></div>
       <div class="row tight" style="margin-top:14px">
         <button class="ghost-btn small" id="onbCurRetry" type="button">🔄 AI로 다시 확인</button>
-        <button class="ghost-btn small" id="onbCurEdit" type="button">◀ 과목 다시 고르기</button>
+        <button class="ghost-btn small" id="onbCurEdit" type="button">◀ 과목·교과서 다시 고르기</button>
         ${hasKey() ? '' : '<button class="ghost-btn small" id="onbCurKey" type="button">🔑 AI 키 연결</button>'}
       </div>
       <p class="fine" id="onbCurNote"></p>`,
@@ -609,12 +800,12 @@ function stepCurriculum() {
       const retry = el$('#onbCurRetry', body);
       const ready = draft.curriculums && draft.subjects.every(id => draft.curriculums[id]);
       retry?.addEventListener('click', () => {
-        if (!hasKey()) toast('API 키를 연결하면 AI가 학교·학년·학기에 맞춰 다시 확인해요.', 'info', 3000);
-        runCurriculum({ list, status, note, retry });
+        if (!hasKey()) toast('API 키를 연결하면 AI가 교과서 목차까지 확인해요.', 'info', 3000);
+        runCurriculum({ list, status, note, retry, force: true });
       });
       el$('#onbCurEdit', body)?.addEventListener('click', () => { step = 4; render(); });
       el$('#onbCurKey', body)?.addEventListener('click', () => { step = 0; render(); });
-      if (ready) drawCurriculum(list, status, note);
+      if (ready && draft.curriculumSig === curriculumSignature()) drawCurriculum(list, status, note);
       else runCurriculum({ list, status, note, retry });
     },
   };
@@ -623,17 +814,35 @@ function stepCurriculum() {
 async function runCurriculum({ list, status, note, retry }) {
   const token = ++curToken;
   const ids = draft.subjects.slice();
+  const sig = curriculumSignature();
   draft.curriculums = {};
   if (retry) retry.disabled = true;
   drawCurriculum(list, status, note);
   try {
     for (const id of ids) {
       if (token !== curToken || !el('onbCurList')) return;
-      const cur = await buildCurriculum(id, { learner: draft, materials: [] });
+      const tb = draftTextbook(id);
+      const cur = await buildCurriculum(id, {
+        learner: { ...draft, curriculum: draft.curriculum || pickedCurriculum() },
+        materials: [],
+        textbook: tb.name,
+        publisher: tb.publisher,
+        onProgress: (stage) => {
+          if (token !== curToken || !status) return;
+          if (stage === 'noground') {
+            status.hidden = false;
+            status.className = 'status';
+            status.innerHTML = `<span class="status-line"><span class="spinner"></span> 검색 결과가 없어 AI 지식으로 단원을 구성하는 중… <b>${escapeHtml(draft.subjectNames[id] || subjectLabel(id))}</b></span>`;
+          }
+        },
+      });
       if (token !== curToken) return;
+      cur.topics = normalizeTopics(cur.topics);
+      if (!cur.textbook && (tb.name || tb.publisher)) cur.textbook = tb;
       draft.curriculums[id] = cur;
       drawCurriculum(el('onbCurList'), el('onbCurStatus'), el('onbCurNote'));
     }
+    draft.curriculumSig = sig;
   } finally {
     if (token === curToken && retry) retry.disabled = false;
   }
@@ -659,7 +868,9 @@ function stepSync() {
       <div class="onb-sum">
         <div><span>국가 · 학교</span><b>${escapeHtml(draft.country)} · ${escapeHtml(draft.school || '학교 미입력')}</b></div>
         <div><span>학년 · 학기</span><b>${escapeHtml(draft.level)} ${escapeHtml(draft.grade)} · ${escapeHtml(draft.semester)}${draft.age ? ` (만 ${draft.age}세)` : ''}</b></div>
+        <div><span>교육과정</span><b>${escapeHtml(draft.curriculum || pickedCurriculum())}</b></div>
         <div><span>과목</span><b>${draft.subjects.length}개 · ${draft.subjects.slice(0, 4).map(id => escapeHtml(subjectNameOf(id))).join(', ')}${draft.subjects.length > 4 ? ' 외' : ''}</b></div>
+        <div><span>교과서</span><b>${(() => { const list = draft.subjects.map(draftTextbook).filter(t => t.name); return list.length ? `${list.length}개 과목 · ${escapeHtml([list[0].name, list[0].publisher].filter(Boolean).join(' · '))}${list.length > 1 ? ' 외' : ''}` : '미입력'; })()}</b></div>
         <div><span>시험</span><b>${draft.examDate ? `${escapeHtml(draft.examDate)} (D-${Math.max(0, dday(draft.examDate))})` : '미정'}</b></div>
         <div><span>목표 · 하루 시간</span><b>${draft.goalPct}% · ${minutesLabel(draft.dailyMinutes)}</b></div>
         <div><span>난이도</span><b>${diffItem ? `${diffItem.icon} ${diffItem.label}` : '수업 후 평가로 자동 조절'}</b></div>
@@ -696,6 +907,7 @@ function collect() {
     draft.age = Number(el$('#onbAge', body)?.value) || draft.age;
     draft.school = (el$('#onbSchool', body)?.value || '').trim();
     draft.schoolNote = (el$('#onbSchoolNote', body)?.value || '').trim();
+    draft.curriculum = pickedCurriculum();
   } else if (step === 2) {
     draft.examDate = el$('#onbExam', body)?.value || '';
   }
@@ -746,6 +958,22 @@ async function next() {
     }
   } else if (step === 4) {
     if (!draft.subjects.length) { toast('과목을 하나 이상 골라 주세요.', 'err'); return; }
+    draft.curriculum = pickedCurriculum();
+    // 교과서·교육과정이 그대로면 이미 찾은 단원(과 고른 선택)을 그대로 둔다
+    const same = draft.curriculums && draft.curriculumSig && draft.curriculumSig === curriculumSignature();
+    if (!same) {
+      draft.curriculums = null;
+      draft.curriculumSig = '';
+    }
+  } else if (step === 5) {
+    const empty = draft.subjects.filter(id => {
+      const cur = draft.curriculums && draft.curriculums[id];
+      return cur && normalizeTopics(cur.topics).filter(t => t.on).length === 0;
+    });
+    if (empty.length) {
+      toast(`${empty.map(id => subjectNameOf(id)).join(', ')} 단원을 하나 이상 남겨 주세요.`, 'err', 3200);
+      return;
+    }
   } else {
     collect();
   }
@@ -768,17 +996,22 @@ export async function finish(skipped = false) {
   collect();
   if (!Array.isArray(draft.subjects) || !draft.subjects.length) draft.subjects = defaults().subjects.slice();
   const map = draft.curriculums || {};
+  const curriculum = draft.curriculum || pickedCurriculum();
   const patch = {
     country: draft.country,
     level: draft.level,
     grade: draft.grade,
     age: Number(draft.age) || ageForGrade(draft.level, draft.grade),
     semester: draft.semester || '1학기',
+    curriculum,
+    curriculumPick: draft.curriculumPick,
+    curriculumCustom: draft.curriculumCustom,
     school: draft.school,
     schoolNote: draft.schoolNote,
     schoolInfo: draft.schoolInfo,
     subjects: draft.subjects,
     subjectNames: draft.subjectNames,
+    textbooks: draft.textbooks || {},
     levelSelf: draft.levelSelf,
     examDate: draft.examDate || '',
     goalPct: Number(draft.goalPct) || 70,
@@ -791,8 +1024,19 @@ export async function finish(skipped = false) {
   if (!draft.subjects.includes(state.subject)) setSubject(draft.subjects[0]);
   draft.subjects.forEach(id => {
     const cur = map[id];
-    if (cur && cur.topics && cur.topics.length) applyCurriculum(id, cur);
-    else applyCurriculum(id, basicCurriculum(id));
+    const tb = draftTextbook(id);
+    if (cur && cur.topics && cur.topics.length) {
+      // 고른 단원만 학습 경로에 남기고, 지운 단원은 allTopics 에 보관
+      const all = normalizeTopics(cur.topics);
+      const kept = all.filter(t => t.on);
+      applyCurriculum(id, Object.assign({}, cur, {
+        topics: kept.length ? kept : all,
+        allTopics: all.map(t => ({ title: t.title, focus: t.focus })),
+        textbook: cur.textbook || ((tb.name || tb.publisher) ? tb : null),
+      }));
+    } else {
+      applyCurriculum(id, basicCurriculum(id));
+    }
   });
   el('onboarding').hidden = true;
   renderTopBar();
