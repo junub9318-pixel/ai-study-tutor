@@ -1381,7 +1381,8 @@ html[data-theme="light"] .face.back{ background: var(--surface-2); }
 .onb-school-row .onb-input{ flex:1; min-width:0; }
 .onb-check-btn{
   flex:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  min-height: 50px; padding: 0 16px; border-radius: 14px;
+  min-width: 104px; min-height: 50px; padding: 0 14px; border-radius: 14px;
+  white-space: nowrap; word-break: keep-all;
   background: linear-gradient(135deg, #4b66ff, #7a63ff); color:#fff;
   font-size: 13.5px; font-weight: 800; white-space: nowrap;
   transition: filter .15s, transform .12s;

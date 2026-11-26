@@ -5,7 +5,7 @@
    ========================================================= */
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup,
-} from './core.js?v=257500a3';
+} from './core.js?v=783d5ca2';
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -537,8 +537,14 @@ const PATH_SYSTEM = `너는 듀오링고식 학습 경로를 설계하는 교사
 - 모든 레슨은 주어진 시험 범위 안에서만 구성한다.`;
 
 function fallbackPath({ label, scopeText, units, days, goalPct }) {
-  const list = (units && units.length ? units : [scopeText || label || '시험 범위']).slice(0, 8);
-  const u = i => String(list[i % list.length] || label || '핵심 단원').trim();
+  const clean = String(scopeText || '').replace(/\s+/g, ' ').trim();
+  let list = (units && units.length ? units.map(String) : []).filter(Boolean);
+  if (!list.length && clean) {
+    list = clean.split(/[,;·\/]|\s{2,}/).map(s => s.trim()).filter(s => s && s.length <= 28);
+  }
+  if (!list.length) list = [label ? `${label} 핵심 단원` : '시험 범위'];
+  const short = list.map(s => (s.length > 18 ? s.slice(0, 18) + '…' : s));
+  const u = i => short[i % short.length];
   const steps = [
     { kind: '개념', title: `${u(0)} 개념 잡기`, sub: '큰 그림과 용어부터' },
     { kind: '개념', title: `${u(1)} 원리 이해`, sub: '왜 그런지 설명하기' },
@@ -553,7 +559,7 @@ function fallbackPath({ label, scopeText, units, days, goalPct }) {
   if (days != null && days >= 21 && goalPct >= 90) {
     steps.splice(6, 0, { kind: '오디오', title: `${u(5)} 귀로 복습`, sub: '5분 오디오' });
   }
-  return { title: scopeText ? String(scopeText).slice(0, 40) : `${label || '과목'} 시험 대비`, steps, source: 'basic' };
+  return { title: clean ? clean.slice(0, 40) : `${label || '과목'} 시험 대비`, steps, source: 'basic' };
 }
 
 /**

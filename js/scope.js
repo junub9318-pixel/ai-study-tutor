@@ -5,10 +5,10 @@
 import {
   state, load, getSetup, saveSetup, getScope, saveScope, getDifficulty, DIFFICULTY_LEVELS,
   escapeHtml, toast, openModal, uid, dayKey, dday, hasKey, saveMaterials,
-} from './core.js?v=257500a3';
-import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=257500a3';
-import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=257500a3';
-import { applyLessonPath, renderCourse } from './course.js?v=257500a3';
+} from './core.js?v=783d5ca2';
+import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=783d5ca2';
+import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=783d5ca2';
+import { applyLessonPath, renderCourse } from './course.js?v=783d5ca2';
 
 const el = (id) => document.getElementById(id);
 
@@ -119,17 +119,11 @@ function bindScopeCard(host, key, sc) {
 
 /* ---------------- 파일 선택 → 자료 등록 → 범위 파악 ---------------- */
 function pickFiles(kind, key, setStatus, clearStatus) {
-  const input = document.createElement('input');
-  input.type = 'file';
-  if (kind === 'pdf') {
-    input.accept = '.pdf,.txt,text/plain,application/pdf';
-    input.multiple = true;
-  } else {
-    input.accept = 'image/*';
-    input.multiple = true;
-    input.capture = 'environment';
-  }
-  input.addEventListener('change', async () => {
+  const input = el(kind === 'pdf' ? 'scopePdfInput' : 'scopePhotoInput');
+  if (!input) return;
+  input.value = '';
+  const onChange = async () => {
+    input.removeEventListener('change', onChange);
     const files = Array.from(input.files || []);
     if (!files.length) return;
     for (const f of files) {
@@ -151,9 +145,12 @@ function pickFiles(kind, key, setStatus, clearStatus) {
         await readScope(mat, key);
       } catch (e) {
         toast(e.message || '자료를 읽지 못했어요.', 'err', 3600);
+        if (setStatus) setStatus('❌ ' + escapeHtml(e.message || '자료를 읽지 못했어요.'), 'err');
       }
     }
-  });
+    void clearStatus;
+  };
+  input.addEventListener('change', onChange);
   input.click();
 }
 
@@ -259,6 +256,9 @@ export function openScopeQuestions({ key = subjectKey(), scopeText = '', units =
         <b>${escapeHtml(title || scopeText.slice(0, 40))}</b>
         <p>${escapeHtml(scopeText)}</p>
       </div>
+      <label class="field"><span>시험 범위 (고칠 수 있어요)</span>
+        <textarea id="sqScopeEdit" rows="2" placeholder="예: 고1 공통과학 2단원~3단원">${escapeHtml(scopeText)}</textarea>
+      </label>
       <label class="field"><span>1. 시험까지 남은 날짜</span>
         <input type="date" id="sqDate" value="${escapeHtml(examDate)}" min="${dayKey()}" />
         <p class="fine" id="sqDday"></p>
@@ -334,9 +334,10 @@ export function openScopeQuestions({ key = subjectKey(), scopeText = '', units =
       const rec = getDifficulty(key);
       const diff = rec.level ? DIFFICULTY_LEVELS[rec.level] : null;
       const mats = scopeMaterials(key);
+      const scopeEdited = String(modal.root.querySelector('#sqScopeEdit').value || '').trim() || scopeText;
       const path = await buildLessonPath({
         label,
-        scopeText,
+        scopeText: scopeEdited,
         units,
         days: days >= 0 ? days : 0,
         goalPct: goal,
@@ -347,7 +348,7 @@ export function openScopeQuestions({ key = subjectKey(), scopeText = '', units =
       });
       if (!path || !Array.isArray(path.steps) || !path.steps.length) throw new Error('레슨 경로를 만들지 못했어요.');
       saveScope(key, {
-        scopeText, units, title: path.title || title,
+        scopeText: scopeEdited, units, title: path.title || title,
         source, summary, note,
         examDate: examDateV, goalPct: goal, understanding: under,
         pathTitle: path.title || title, pathSource: path.source || 'basic', pathAt: Date.now(),
