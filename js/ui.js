@@ -6,8 +6,8 @@ import {
   $, $$, el, escapeHtml, fmt, toast, openModal, hasKey, getKey, setKey, clearKey,
   connectTest, getModel, listModels, ApiError, saveSettings, saveMaterials, uid, dayKey,
   providerInfo, PROVIDER_IDS, getProvider, setProvider, getKeyFor, setKeyFor, clearKeyFor, getModelFor, canSearch,
-} from './core.js?v=a7eabd5b';
-import { renderHeaderChips } from './gamify.js?v=a7eabd5b';
+} from './core.js?v=ce8e2714';
+import { renderHeaderChips } from './gamify.js?v=ce8e2714';
 
 /* ---------------- theme ---------------- */
 export function initTheme() {

@@ -6,7 +6,7 @@
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, generateText, parseJSON,
   getKey, getSetup, fastModel, liteModel, canSearch,
-} from './core.js?v=a7eabd5b'
+} from './core.js?v=ce8e2714'
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -238,9 +238,11 @@ function quotaFailure(lastErr) {
 }
 /** 검색 없는 일반 호출용 모델 순서: 여유 있는 lite 먼저, 그다음 지금 쓰는 모델 */
 function plainChain() {
-  const a = liteModel();
-  const b = fastModel();
-  return a === b ? [a] : [a, b];
+  const lite = liteModel();
+  const fast = fastModel();
+  if (lite === fast) return [fast];
+  // Gemini: 한도가 더 여유 있는 lite 를 먼저 / Groq·OpenRouter: 기본 모델 먼저, lite 는 예비
+  return canSearch() ? [lite, fast] : [fast, lite];
 }
 
 /* Groq · OpenRouter 처럼 검색 grounding 이 없는 제공자에서 쓰는 지시문.

@@ -451,9 +451,9 @@ export function openModal(innerHtml, { className = '', onClose } = {}) {
    · 제공자(Google Gemini · Groq · OpenRouter) 선택과 호출은 ai.js 가 맡는다.
    · 기존 코드가 쓰던 이름(generateText · connectTest · getKey …)은 그대로 유지한다.
    ========================================================= */
-import { ApiError, generateText } from './ai.js?v=a7eabd5b';
+import { ApiError, generateText } from './ai.js?v=ce8e2714';
 
-export * from './ai.js?v=a7eabd5b';
+export * from './ai.js?v=ce8e2714';
 
 /** JSON 응답 요청 (제공자 공통 · 스키마는 Gemini 에서만 강제, 나머지는 프롬프트로 유도) */
 export async function generateJSON(opts) {

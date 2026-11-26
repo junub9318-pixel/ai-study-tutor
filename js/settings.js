@@ -6,21 +6,21 @@ import {
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   providerInfo, getProvider, getKeyFor, clearKeyFor, canSearch,
   saveSettings, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=a7eabd5b';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported, providerName } from './ui.js?v=a7eabd5b';
-import { openDifficultyPrompt } from './difficulty.js?v=a7eabd5b';
-import { gradesFor, ageForGrade, subjectIcon, buildCurriculum, QUOTA_NOTICE } from './curriculum.js?v=a7eabd5b';
+} from './core.js?v=ce8e2714';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported, providerName } from './ui.js?v=ce8e2714';
+import { openDifficultyPrompt } from './difficulty.js?v=ce8e2714';
+import { gradesFor, ageForGrade, subjectIcon, buildCurriculum, QUOTA_NOTICE } from './curriculum.js?v=ce8e2714';
 import {
   CURRICULUM_OPTIONS, curriculumOptions, getTextbook, setTextbook, normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=a7eabd5b';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=a7eabd5b';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula, applyCurriculum } from './course.js?v=a7eabd5b';
+} from './textbook.js?v=ce8e2714';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=ce8e2714';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula, applyCurriculum } from './course.js?v=ce8e2714';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=a7eabd5b';
-import { openOnboarding } from './onboarding.js?v=a7eabd5b';
-import { createTimerWheel, clampMinutes } from './routine.js?v=a7eabd5b';
+} from './sync.js?v=ce8e2714';
+import { openOnboarding } from './onboarding.js?v=ce8e2714';
+import { createTimerWheel, clampMinutes } from './routine.js?v=ce8e2714';
 
 const el = (id) => document.getElementById(id);
 
@@ -567,7 +567,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=a7eabd5b').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=ce8e2714').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
