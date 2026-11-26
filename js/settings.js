@@ -5,21 +5,21 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=759cc446';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=759cc446';
-import { openDifficultyPrompt } from './difficulty.js?v=759cc446';
-import { gradesFor, ageForGrade, subjectIcon, buildCurriculum } from './curriculum.js?v=759cc446';
+} from './core.js?v=15b98fd0';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=15b98fd0';
+import { openDifficultyPrompt } from './difficulty.js?v=15b98fd0';
+import { gradesFor, ageForGrade, subjectIcon, buildCurriculum } from './curriculum.js?v=15b98fd0';
 import {
   CURRICULUM_OPTIONS, curriculumOptions, getTextbook, setTextbook, normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=759cc446';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=759cc446';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula, applyCurriculum } from './course.js?v=759cc446';
+} from './textbook.js?v=15b98fd0';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=15b98fd0';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula, applyCurriculum } from './course.js?v=15b98fd0';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=759cc446';
-import { openOnboarding } from './onboarding.js?v=759cc446';
-import { createTimerWheel, clampMinutes } from './routine.js?v=759cc446';
+} from './sync.js?v=15b98fd0';
+import { openOnboarding } from './onboarding.js?v=15b98fd0';
+import { createTimerWheel, clampMinutes } from './routine.js?v=15b98fd0';
 
 const el = (id) => document.getElementById(id);
 
@@ -36,11 +36,13 @@ function curMiniListHtml(subjIds) {
       ? (c.source === 'ai' ? '<span class="cur-badge">AI</span>' : '<span class="cur-badge basic">기본</span>')
       : '<span class="cur-badge basic">전</span>';
     const tb = [c.textbookName, c.publisher].filter(Boolean).join(' · ');
-    const units = Array.isArray(c.allTopics) ? c.allTopics.length : 0;
+    const all = Array.isArray(c.allTopics) ? c.allTopics : [];
+    const onCount = all.filter(t => t.on !== false).length;
+    const unitLine = all.length ? `단원 ${onCount < all.length ? `${onCount}/${all.length}` : all.length}개` : '';
     return `<div class="cur-mini-row" data-cmrow="${escapeHtml(id)}">
       <span class="cm-ico">${c.icon}</span>
       <div class="cm-main"><b>${escapeHtml(c.label)}</b><small>${escapeHtml(c.updatedAt ? c.unitTitle : '아직 확인하지 않았어요')}</small>
-        <small class="cm-tb">${tb ? '📗 ' + escapeHtml(tb) : '📗 교과서 미입력'}${units ? ` · 단원 ${units}개` : ''}</small></div>
+        <small class="cm-tb">${tb ? '📗 ' + escapeHtml(tb) : '📗 교과서 미입력'}${unitLine ? ` · ${unitLine}` : ''}</small></div>
       ${badge}
       <button class="ghost-btn small" data-curedit="${escapeHtml(id)}" type="button">단원 편집</button>
     </div>`;
@@ -213,7 +215,7 @@ function openTextbookEditor(subjectId) {
       grounded: st.grounded,
       textbook: (st.textbook || st.publisher) ? { name: st.textbook, publisher: st.publisher } : null,
       topics: kept,
-      allTopics: all.map(t => ({ title: t.title, focus: t.focus })),
+      allTopics: all.map(t => ({ title: t.title, focus: t.focus, on: t.on })),
     });
     saveSetup({ curriculumAt: Date.now() });
     modal.close();
@@ -558,7 +560,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=759cc446').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=15b98fd0').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {

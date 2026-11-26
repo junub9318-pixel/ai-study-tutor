@@ -7,21 +7,21 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=759cc446';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=759cc446';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=759cc446';
+} from './core.js?v=15b98fd0';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=15b98fd0';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=15b98fd0';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=759cc446';
+} from './curriculum.js?v=15b98fd0';
 import {
   CURRICULUM_OPTIONS, CUSTOM_CURRICULUM, curriculumOptions, recommendCurriculum, curriculumHint,
   normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=759cc446';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=759cc446';
+} from './textbook.js?v=15b98fd0';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=15b98fd0';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=759cc446';
+} from './routine.js?v=15b98fd0';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
@@ -1037,7 +1037,7 @@ export async function finish(skipped = false) {
       const kept = all.filter(t => t.on);
       applyCurriculum(id, Object.assign({}, cur, {
         topics: kept.length ? kept : all,
-        allTopics: all.map(t => ({ title: t.title, focus: t.focus })),
+        allTopics: all.map(t => ({ title: t.title, focus: t.focus, on: t.on })),
         textbook: cur.textbook || ((tb.name || tb.publisher) ? tb : null),
       }));
     } else {

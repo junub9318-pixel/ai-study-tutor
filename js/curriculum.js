@@ -6,7 +6,7 @@
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, generateText, parseJSON,
   getKey, getSetup, fastModel,
-} from './core.js?v=759cc446'
+} from './core.js?v=15b98fd0'
 
 export const CUR_SCHEMA = {
   type: 'object',

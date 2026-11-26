@@ -5,8 +5,8 @@ import {
   SUBJECTS, K, state, load, save, removeKey, currentSubject, setSubject,
   $, $$, el, escapeHtml, fmt, toast, openModal, hasKey, getKey, setKey, clearKey,
   connectTest, getModel, listModels, ApiError, saveSettings, saveMaterials, uid, dayKey,
-} from './core.js?v=759cc446';
-import { renderHeaderChips } from './gamify.js?v=759cc446';
+} from './core.js?v=15b98fd0';
+import { renderHeaderChips } from './gamify.js?v=15b98fd0';
 
 /* ---------------- theme ---------------- */
 export function initTheme() {
