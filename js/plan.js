@@ -3,9 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, renderRich, generateJSON, PLAN_SCHEMA,
-  currentSubject, materialContext, uid, toast, dayKey, dday, dateLabel, shiftDay, learnerContext,} from './core.js?v=8e2ed827';
-import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=8e2ed827';
-import { awardXP, bump } from './gamify.js?v=8e2ed827';
+  currentSubject, materialContext, uid, toast, dayKey, dday, dateLabel, shiftDay, learnerContext,} from './core.js?v=a7eabd5b';
+import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=a7eabd5b';
+import { awardXP, bump } from './gamify.js?v=a7eabd5b';
 
 let matSel = new Set();
 const el = (id) => document.getElementById(id);

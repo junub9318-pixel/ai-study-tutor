@@ -501,8 +501,19 @@ function partsToOpenAIContent(parts) {
   return content;
 }
 
+/** 응답 스키마의 최상위 키를 프롬프트에 알려 준다 (responseSchema 미지원 제공자용) */
+function schemaHint(schema) {
+  try {
+    const props = schema && schema.properties;
+    if (!props) return '';
+    const keys = Object.keys(props);
+    if (!keys.length) return '';
+    return `\n[필드] 다음 키를 가진 JSON 객체 하나로 답한다: ${keys.join(', ')}.`;
+  } catch (e) { return ''; }
+}
+
 function openaiMessages(opts) {
-  const system = String(opts.system || '') + (opts.json ? JSON_RULE : '');
+  const system = String(opts.system || '') + (opts.json ? JSON_RULE : '') + (opts.json ? schemaHint(opts.schema) : '');
   const msgs = [];
   if (system.trim()) msgs.push({ role: 'system', content: system.trim() });
   else if (opts.json) msgs.push({ role: 'system', content: 'JSON 객체 하나만 출력한다.' + JSON_RULE });
