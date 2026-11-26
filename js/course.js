@@ -5,14 +5,14 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=4203a19d';
-import { showView, openKeyModal } from './ui.js?v=4203a19d';
-import { openDifficultyPrompt } from './difficulty.js?v=4203a19d';
+} from './core.js?v=0e3447ca';
+import { showView, openKeyModal } from './ui.js?v=0e3447ca';
+import { openDifficultyPrompt } from './difficulty.js?v=0e3447ca';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=4203a19d';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=4203a19d';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=4203a19d';
+} from './gamify.js?v=0e3447ca';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=0e3447ca';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=0e3447ca';
 
 const el = (id) => document.getElementById(id);
 
@@ -645,6 +645,7 @@ export function initCourse() {
   });
 
   document.addEventListener('app:studied', (e) => { try { markStudied(e.detail.type); } catch (err) {} });
+  document.addEventListener('app:difficulty', () => { try { renderDifficultyPill(courseId()); } catch (e) {} });
   document.addEventListener('gamify:update', () => { renderTopBar(); renderTodayStrip(); });
   document.addEventListener('app:subject', () => { renderCourse(); });
   document.addEventListener('app:view', (e) => {

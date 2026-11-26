@@ -7,14 +7,14 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=4203a19d';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=4203a19d';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=4203a19d';
+} from './core.js?v=0e3447ca';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=0e3447ca';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=0e3447ca';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=4203a19d';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=4203a19d';
+} from './curriculum.js?v=0e3447ca';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=0e3447ca';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
