@@ -3,7 +3,7 @@
    · 30분 단위 · 최소 30분 ~ 최대 12시간
    · 온보딩 '하루 루틴' 단계와 설정 > 하루 학습 시간이 같은 컴포넌트를 쓴다
    ========================================================= */
-import { dday } from './core.js?v=8217dac3';
+import { dday } from './core.js?v=e7de7f04';
 
 export const STEP_MIN = 30;
 export const MIN_MINUTES = 30;
@@ -115,8 +115,9 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
     return best;
   }
 
-  // 프로그램으로 옮기는 동안에는 스크롤 이벤트를 값으로 반영하지 않는다
+  // 프로그램으로 옮기는 동안, 그리고 사용자가 직접 만지기 전에는 스크롤 위치를 값으로 반영하지 않는다
   let syncing = false;
+  let interacted = false;
   let syncTimer = null;
   function hold(ms) {
     syncing = true;
@@ -127,6 +128,7 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
   function paint() {
     const h = Math.floor(current / 60);
     const m = current % 60;
+    host.dataset.value = String(current);
     if (readout) readout.textContent = minutesLabel(current);
     cellsH.forEach(c => {
       const on = Number(c.dataset.v) === h;
@@ -198,13 +200,35 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
   ['h', 'm'].forEach(unit => {
     const col = colOf(unit);
     if (!col) return;
+    const touch = () => { interacted = true; };
+    col.addEventListener('pointerdown', touch, { passive: true });
+    col.addEventListener('touchstart', touch, { passive: true });
+    col.addEventListener('wheel', touch, { passive: true });
+    col.addEventListener('keydown', () => { interacted = true; });
+ 
     let timer = null;
     const settle = () => {
       clearTimeout(timer);
-      timer = setTimeout(() => commit(unit), 90);
+      timer = setTimeout(() => {
+        // 처음 그려질 때 브라우저 스냅이 위치를 되돌리는 경우가 있어,
+        // 사용자가 직접 만지기 전까지는 값 대신 위치만 다시 맞춘다
+        if (!interacted) {
+          syncing = false;
+          scrollCol('h', false);
+          scrollCol('m', false);
+          return;
+        }
+        commit(unit);
+      }, 90);
     };
     col.addEventListener('scroll', settle, { passive: true });
-    col.addEventListener('scrollend', () => commit(unit));
+    col.addEventListener('scrollend', () => {
+      if (!interacted) {
+        if (!syncing) { syncing = false; scrollCol('h', false); scrollCol('m', false); }
+        return;
+      }
+      commit(unit);
+    });
     col.addEventListener('keydown', (e) => {
       const maxIdx = unit === 'h' ? 12 : 1;
       let idx = syncing ? (unit === 'h' ? Math.floor(current / 60) : (current % 60) / 30) : nearestIndex(col, unit);
@@ -214,6 +238,7 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
       else if (e.key === 'End') idx = maxIdx;
       else return;
       e.preventDefault();
+      interacted = true;
       idx = Math.max(0, Math.min(maxIdx, idx));
       applyIndex(unit, idx);
       syncing = false;
@@ -237,10 +262,14 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
 
   paint();
   // 첫 레이아웃·스냅이 자리를 잡은 뒤 위치를 맞춘다
-  const apply = () => { syncing = false; scrollCol('h', false); scrollCol('m', false); };
+  const apply = () => {
+    syncing = false;
+    if (!interacted) { scrollCol('h', false); scrollCol('m', false); }
+  };
   requestAnimationFrame(apply);
   setTimeout(apply, 120);
   setTimeout(apply, 320);
+  setTimeout(apply, 700);
 
   return {
     getValue: () => current,
