@@ -4,12 +4,12 @@
 import {
   K, state, load, save, $, escapeHtml, renderRich, toSpeech, streamChat, tutorSystem,
   currentSubject, subjectKey, hasKey, openModal, toast, uid, materialContext, ApiError,
-} from './core.js?v=2ab59033';
+} from './core.js?v=2549316b';
 import {
   speak, stopSpeaking, listen, sttSupported, ttsSupported, readImageFile, fileToMaterial,
   openMaterialsModal, scrollToBottom, toastCopy, setStatus,
-} from './ui.js?v=2ab59033';
-import { awardXP, bump, profile } from './gamify.js?v=2ab59033';
+} from './ui.js?v=2549316b';
+import { awardXP, bump, profile } from './gamify.js?v=2549316b';
 
 let chats = load(K.chats, {});
 let controller = null;
@@ -202,7 +202,7 @@ function openAttachMaterialPicker() {
         try {
           const mat = await fileToMaterial(f);
           if (mat && mat.kind !== 'img') {
-            const { addMaterial } = await import('./ui.js?v=2ab59033');
+            const { addMaterial } = await import('./ui.js?v=2549316b');
             addMaterial(mat);
             selected.add(mat.id);
           }
@@ -500,7 +500,7 @@ export function initTutor() {
     for (const f of Array.from(e.target.files || [])) {
       try {
         const mat = await fileToMaterial(f);
-        if (mat) { const { addMaterial } = await import('./ui.js?v=2ab59033'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
+        if (mat) { const { addMaterial } = await import('./ui.js?v=2549316b'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
       } catch (err) { toast(err.message, 'err'); }
     }
     e.target.value = '';
