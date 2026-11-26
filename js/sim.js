@@ -2,9 +2,9 @@
    sim.js — 인터랙티브 개념 시뮬레이션 (내장 + AI 생성)
    ========================================================= */
 import {
-  K, state, load, save, $, escapeHtml, generateText, currentSubject, uid, toast, learnerContext,} from './core.js?v=338d0b7b';
-import { loading, setStatus, errorStatus, toastCopy } from './ui.js?v=338d0b7b';
-import { awardXP, bump } from './gamify.js?v=338d0b7b';
+  K, state, load, save, $, escapeHtml, generateText, currentSubject, uid, toast, learnerContext,} from './core.js?v=825eb38c';
+import { loading, setStatus, errorStatus, toastCopy } from './ui.js?v=825eb38c';
+import { awardXP, bump } from './gamify.js?v=825eb38c';
 
 const el = (id) => document.getElementById(id);
 let currentSim = 'quadratic';

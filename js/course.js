@@ -5,13 +5,13 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid,
-} from './core.js?v=338d0b7b';
-import { showView, openKeyModal } from './ui.js?v=338d0b7b';
+} from './core.js?v=825eb38c';
+import { showView, openKeyModal } from './ui.js?v=825eb38c';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=338d0b7b';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=338d0b7b';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=338d0b7b';
+} from './gamify.js?v=825eb38c';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=825eb38c';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=825eb38c';
 
 const el = (id) => document.getElementById(id);
 
@@ -289,7 +289,7 @@ export function renderSubjectSheet() {
       getCourse(b.dataset.sid);
       renderSubjectSheet();
       renderCourse();
-      toast(`${subjectById(b.dataset.sid).label} 코스로 바꿨어요`, 'info', 1600);
+      toast(`${subjectLabel(b.dataset.sid)} 코스로 바꿨아요`, 'info', 1600);
     });
   });
   el('newCoursesRow').querySelectorAll('[data-sid]').forEach(b => {
@@ -302,7 +302,7 @@ export function renderSubjectSheet() {
       getCourse(id);
       renderSubjectSheet();
       renderCourse();
-      toast(`${subjectById(id).label}을(를) 내 과정에 추가했어요`, 'xp');
+      toast(`${subjectLabel(id)}을(를) 내 과정에 추가했어요`, 'xp');
     });
   });
   el('newCoursesRow').querySelector('[data-add-subject]')?.addEventListener('click', openAddSubjectModal);
