@@ -60,7 +60,7 @@ function renderRank() {
     <li class="rank-row ${r.me ? 'me' : ''}">
       <span class="pos ${r.rank <= 3 ? 'top' : ''}">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</span>
       <span class="r-ava">${r.emoji || '🙂'}</span>
-      <span class="r-name">${escapeHtml(r.name)}${r.me ? ' <small>나</small>' : r.bot ? ' <small>AI 메이트</small>' : ''}${r.stale ? ' <small>· 갱신 필요</small>' : ''}</span>
+      <span class="r-name">${escapeHtml(r.name)}${r.me && r.name !== '나' ? ' <small>나</small>' : r.bot ? ' <small>AI 메이트</small>' : ''}${r.stale ? ' <small>· 갱신 필요</small>' : ''}</span>
       <span class="r-tier">${(r.tier && r.tier.icon) || '🥉'}</span>
       <span class="r-xp">${fmt(r.weeklyXP)} <small>XP</small></span>
     </li>`).join('');

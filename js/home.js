@@ -3,7 +3,7 @@
    ========================================================= */
 import { K, state, load, save, $, escapeHtml, fmt, toast, openModal, dayKey } from './core.js';
 import {
-  profile, weeklyXP, xpToday, goal, setGoal, currentStreak, bestStreak, tierFor,
+  profile, weeklyXP, xpToday, goal, setGoal, currentStreak, bestStreak, tierFor, TIERS,
   leaderboard, BADGES, isBadgeOn, dailySeries,
 } from './gamify.js';
 import { dailyChallengeSummary, dailyDoneToday, startDaily } from './quiz.js';
@@ -40,7 +40,7 @@ export function renderHome() {
   el('statStreak').textContent = `${currentStreak()}일`;
   el('statXP').textContent = `${fmt(wx)} XP`;
   el('statTier').textContent = `${tier.icon} ${tier.name}`;
-  el('statTierSub').textContent = tier.next ? `다음 티어까지 ${fmt(tier.remaining)} XP` : '최고 티어';
+  el('statTierSub').textContent = tier.next ? `${TIERS[tier.index + 1].name}까지 ${fmt(tier.remaining)} XP` : '최고 티어';
 
   // 데일리 챌린지
   const done = dailyChallengeSummary();
@@ -66,7 +66,7 @@ export function renderHome() {
   mini.innerHTML = [...top, ...(showMe ? [me] : [])].map(r => `
     <li class="${r.me ? 'me' : ''}">
       <span class="rk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</span>
-      <span class="nm">${r.emoji || '🙂'} ${escapeHtml(r.name)}${r.me ? ' (나)' : ''}</span>
+      <span class="nm">${r.emoji || '🙂'} ${escapeHtml(r.name)}${r.me && p.nick ? ' (나)' : ''}</span>
       <span class="xp">${fmt(r.weeklyXP)} XP</span>
     </li>`).join('') || '<li class="xp">아직 기록이 없어요</li>';
 

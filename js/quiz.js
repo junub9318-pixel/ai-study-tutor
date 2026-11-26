@@ -134,7 +134,7 @@ function renderQuestion() {
   host.innerHTML = `
     <div class="quiz-top">
       <button class="ghost-btn small" id="quizQuit" type="button">나가기</button>
-      <div class="quiz-progress"><i style="width:${((active.current) / total) * 100}%"></i></div>
+      <div class="quiz-progress"><i style="width:${(answered / total) * 100}%"></i></div>
       <b style="font-size:12px;white-space:nowrap">${active.current + 1} / ${total}</b>
       ${active.limit ? `<span class="timer" id="quizTimer"></span>` : ''}
       ${active.exam ? `<button class="primary small" id="quizSubmitTop" type="button">제출</button>` : ''}
@@ -375,6 +375,22 @@ function renderHistory() {
   const host = el('quizHistory');
   const hist = load(K.quizzes, []);
   if (!hist.length) { host.innerHTML = ''; return; }
+
+  const wrongItems = [];
+  for (const h of hist) {
+    for (const q of h.questions || []) {
+      const g = (h.graded || {})[q.id];
+      if (g && !g.correct) {
+        const mine = (h.answers || {})[q.id];
+        wrongItems.push({
+          q, g, mine,
+          mineText: mine == null ? '(미응답)' : q.type === '객관식' ? (q.options[mine] || '') : String(mine),
+          when: h.createdAt,
+        });
+      }
+    }
+  }
+
   host.innerHTML = `
     <div class="panel">
       <div class="panel-head tight"><b>최근 기록</b><span class="week-label">${hist.length}개</span></div>
@@ -384,7 +400,17 @@ function renderHistory() {
           <span class="h-meta">${escapeHtml(h.subject)} · ${h.mode === 'exam' ? '모의고사' : h.daily ? '데일리' : '퀴즈'} · ${new Date(h.createdAt).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span>
           ${h.weak.length ? `<span class="week-label">약점 ${h.weak.length}</span>` : '<span class="week-label">완벽 ✅</span>'}
         </div>`).join('')}
-    </div>`;
+    </div>
+    ${wrongItems.length ? `<div class="panel">
+      <div class="panel-head tight"><b>오답 노트</b><span class="week-label">${wrongItems.length}문항 · 기기에 저장됨</span></div>
+      ${wrongItems.slice(0, 6).map(w => `
+        <div class="result-item no" style="margin-bottom:8px">
+          <div class="ri-head"><span class="q-pill">${escapeHtml(w.q.unit || '')}</span><span style="margin-left:auto">${new Date(w.when).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}</span></div>
+          <div class="ri-q">${renderRich(w.q.prompt)}</div>
+          <div class="ri-a"><b>내 답</b> ${escapeHtml(w.mineText)} · <b>정답</b> ${renderRich(w.q.answer || w.q.options[w.q.answerIndex] || '-')}</div>
+          <div class="ri-a" style="color:var(--muted)">${renderRich(w.q.explanation)}</div>
+        </div>`).join('')}
+    </div>` : ''}`;
 }
 
 /* ---------------- public ---------------- */

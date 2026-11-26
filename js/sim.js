@@ -153,7 +153,7 @@ const SIMS = {
     controls: [
       { key: 'A', label: 'A (진폭)', min: 0.2, max: 3, step: 0.1, value: 1 },
       { key: 'B', label: 'B (주기)', min: 0.2, max: 4, step: 0.1, value: 1 },
-      { key: 'C', label: 'C (위상, rad)', min: -3.14, max: 3.14, step: 0.1, value: 0 },
+      { key: 'C', label: 'C (위상, rad)', min: -3.2, max: 3.2, step: 0.1, value: 0 },
       { key: 'D', label: 'D (평행이동)', min: -3, max: 3, step: 0.1, value: 0 },
     ],
     draw(ctx, w, h, v) {
@@ -327,7 +327,13 @@ function renderSimChips() {
   el('simChips').querySelectorAll('[data-sim]').forEach(b => b.addEventListener('click', () => loadSim(b.dataset.sim)));
 }
 function stripTex(s) {
-  return String(s).replace(/\$/g, '').replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '');
+  return String(s)
+    .replace(/\\(sin|cos|tan|log|ln|lim|sum|int)/g, '$1')
+    .replace(/\\cdot/g, '·')
+    .replace(/\$/g, '')
+    .replace(/\\[a-zA-Z]+/g, '')
+    .replace(/[{}]/g, '')
+    .replace(/\s+/g, ' ');
 }
 
 function loadSim(id) {

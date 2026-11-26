@@ -64,7 +64,7 @@ function msgNode(m) {
   const bubble = document.createElement('div');
   bubble.className = 'bubble';
   if (m.role === 'user') {
-    bubble.innerHTML = escapeHtml(m.text || '').replace(/\n/g, '<br>');
+    bubble.innerHTML = renderRich(m.text || '');
   } else {
     bubble.innerHTML = renderRich(m.text || '');
   }
@@ -420,7 +420,7 @@ function loadDemo() {
   const subject = currentSubject();
   const demoUser = { id: uid('m'), role: 'user', text: '이차방정식 $x^2 - 5x + 6 = 0$이 왜 인수분해로 풀리는지 모르겠어.', ts: Date.now() - 60000, demo: true };
   const demoAi = {
-    id: uid('m'), role: 'model', demo: true, ts: Date.now() - 50000, model: '예시',
+    id: uid('m'), role: 'model', demo: true, ts: Date.now() - 50000, model: '',
     text: `좋아요, 같이 풀어 봐요. 먼저 **무엇을 구하는지**부터 확인할게요.
 
 **구하는 것**: $x^2 - 5x + 6 = 0$을 참으로 만드는 $x$ 값(근) 두 개예요.
