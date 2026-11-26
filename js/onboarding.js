@@ -5,11 +5,11 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   saveMaterials, currentSubject,
-} from './core.js?v=a05398db';
-import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=a05398db';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum } from './course.js?v=a05398db';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=a05398db';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=a05398db';
+} from './core.js?v=338d0b7b';
+import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=338d0b7b';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum } from './course.js?v=338d0b7b';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=338d0b7b';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=338d0b7b';
 
 const el = (id) => document.getElementById(id);
 let step = 0;
@@ -389,7 +389,7 @@ function stepMaterials() {
         for (const f of Array.from(input.files || [])) {
           try {
             if (/^image\//.test(f.type)) {
-              const { readImageFile } = await import('./ui.js?v=a05398db');
+              const { readImageFile } = await import('./ui.js?v=338d0b7b');
               const img = await readImageFile(f);
               addMaterial({ id: 'mat' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name || '사진', kind: 'img', chars: 0, text: '', dataUrl: img.dataUrl, createdAt: Date.now() });
             } else {

@@ -4,8 +4,8 @@
    · 키가 없거나 오프라인일 때는 기본 교육과정 안내
    ========================================================= */
 import {
-  SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey,
-} from './core.js?v=a05398db';
+  SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup,
+} from './core.js?v=338d0b7b';
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -162,7 +162,7 @@ function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
    AI 교육과정 생성
    --------------------------------------------------------- */
 function learnerLines(learner) {
-  const s = learner || {};
+  const s = learner || getSetup() || {};
   return [
     `- 국가·교육과정: ${s.country || '대한민국'}`,
     `- 학교급·학년: ${[s.level, s.grade].filter(Boolean).join(' ') || '고등학교 1학년'}`,
