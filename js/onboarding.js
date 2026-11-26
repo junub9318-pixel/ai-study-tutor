@@ -7,17 +7,17 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=fcf2dd51';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=fcf2dd51';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=fcf2dd51';
+} from './core.js?v=8217dac3';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=8217dac3';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=8217dac3';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=fcf2dd51';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=fcf2dd51';
+} from './curriculum.js?v=8217dac3';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=8217dac3';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=fcf2dd51';
+} from './routine.js?v=8217dac3';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);

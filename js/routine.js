@@ -3,7 +3,7 @@
    · 30분 단위 · 최소 30분 ~ 최대 12시간
    · 온보딩 '하루 루틴' 단계와 설정 > 하루 학습 시간이 같은 컴포넌트를 쓴다
    ========================================================= */
-import { dday } from './core.js?v=fcf2dd51';
+import { dday } from './core.js?v=8217dac3';
 
 export const STEP_MIN = 30;
 export const MIN_MINUTES = 30;
@@ -94,7 +94,35 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
   const cellsM = Array.from(colM.querySelectorAll('.tw-cell'));
   const cellsOf = (unit) => (unit === 'h' ? cellsH : cellsM);
   const colOf = (unit) => (unit === 'h' ? colH : colM);
-  const indexOf = (unit) => (unit === 'h' ? Math.floor(current / 60) : (current % 60) / 30);
+
+  /** 열 안에서 그 칸이 가운데 오는 scrollTop (실제 레이아웃 기준) */
+  function cellTop(col, idx) {
+    const cell = cellsOf(col === colH ? 'h' : 'm')[idx];
+    if (!cell) return idx * CELL;
+    return Math.max(0, cell.offsetTop + cell.offsetHeight / 2 - col.clientHeight / 2);
+  }
+
+  /** 지금 가운데 가장 가까운 칸의 인덱스 */
+  function nearestIndex(col, unit) {
+    const cells = cellsOf(unit);
+    const center = col.scrollTop + col.clientHeight / 2;
+    let best = 0;
+    let bestD = Infinity;
+    cells.forEach((c, i) => {
+      const d = Math.abs(c.offsetTop + c.offsetHeight / 2 - center);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+
+  // 프로그램으로 옮기는 동안에는 스크롤 이벤트를 값으로 반영하지 않는다
+  let syncing = false;
+  let syncTimer = null;
+  function hold(ms) {
+    syncing = true;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => { syncing = false; }, ms);
+  }
 
   function paint() {
     const h = Math.floor(current / 60);
@@ -118,10 +146,11 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
 
   function scrollCol(unit, animate) {
     const col = colOf(unit);
-    const idx = indexOf(unit);
     if (!col) return;
-    const top = idx * CELL;
-    if (Math.abs(col.scrollTop - top) < 1) return;
+    const idx = unit === 'h' ? Math.floor(current / 60) : (current % 60) / 30;
+    const top = cellTop(col, idx);
+    hold(animate ? 520 : 120);
+    if (Math.abs(col.scrollTop - top) < 2) return;
     try { col.scrollTo({ top, behavior: animate ? 'smooth' : 'auto' }); }
     catch (e) { col.scrollTop = top; }
   }
@@ -139,14 +168,12 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
     if (!silent) emit();
   }
 
-  /** 스크롤이 멈춘 열의 인덱스를 값으로 반영 */
-  function commit(unit) {
-    const col = colOf(unit);
-    if (!col) return;
+  /** 인덱스 → 값 (30분 단위 · 0시간 0분 불가 · 12시간 넘김 불가) */
+  function applyIndex(unit, idx) {
     const maxIdx = unit === 'h' ? 12 : 1;
-    const idx = Math.max(0, Math.min(maxIdx, Math.round(col.scrollTop / CELL)));
-    let h = unit === 'h' ? idx : Math.floor(current / 60);
-    let m = unit === 'm' ? idx * 30 : current % 60;
+    const i = Math.max(0, Math.min(maxIdx, idx));
+    let h = unit === 'h' ? i : Math.floor(current / 60);
+    let m = unit === 'm' ? i * 30 : current % 60;
     if (h === 12) m = 0;
     if (h === 0 && m === 0) m = 30;
     const next = h * 60 + m;
@@ -155,6 +182,14 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
       paint();
       emit();
     }
+  }
+
+  /** 스크롤이 멈춘 열의 인덱스를 값으로 반영 */
+  function commit(unit) {
+    if (syncing) return;
+    const col = colOf(unit);
+    if (!col) return;
+    applyIndex(unit, nearestIndex(col, unit));
     // 네이티브 스냅이 어긋났거나 보정이 필요하면 제자리로
     scrollCol('h', false);
     scrollCol('m', false);
@@ -172,7 +207,7 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
     col.addEventListener('scrollend', () => commit(unit));
     col.addEventListener('keydown', (e) => {
       const maxIdx = unit === 'h' ? 12 : 1;
-      let idx = Math.round(col.scrollTop / CELL);
+      let idx = syncing ? (unit === 'h' ? Math.floor(current / 60) : (current % 60) / 30) : nearestIndex(col, unit);
       if (e.key === 'ArrowDown') idx += 1;
       else if (e.key === 'ArrowUp') idx -= 1;
       else if (e.key === 'Home') idx = 0;
@@ -180,8 +215,10 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
       else return;
       e.preventDefault();
       idx = Math.max(0, Math.min(maxIdx, idx));
-      col.scrollTo({ top: idx * CELL, behavior: 'smooth' });
-      commit(unit);
+      applyIndex(unit, idx);
+      syncing = false;
+      col.scrollTo({ top: cellTop(col, idx), behavior: 'smooth' });
+      hold(340);
     });
     cellsOf(unit).forEach(c => {
       c.addEventListener('click', () => {
@@ -199,8 +236,11 @@ export function createTimerWheel(host, { value = 60, onChange } = {}) {
   });
 
   paint();
-  // 첫 프레임 뒤 위치를 맞춘다(레이아웃 확정 후)
-  requestAnimationFrame(() => { scrollCol('h', false); scrollCol('m', false); });
+  // 첫 레이아웃·스냅이 자리를 잡은 뒤 위치를 맞춘다
+  const apply = () => { syncing = false; scrollCol('h', false); scrollCol('m', false); };
+  requestAnimationFrame(apply);
+  setTimeout(apply, 120);
+  setTimeout(apply, 320);
 
   return {
     getValue: () => current,
