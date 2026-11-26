@@ -3,28 +3,36 @@
    ========================================================= */
 import {
   K, state, hasKey, save, $, $$, openModal, escapeHtml, toast, getSetup,
-} from './core.js?v=0d35ef34';
+  learnerContext, getDifficulty, getScope, difficultyPrompt,
+} from './core.js?v=257500a3';
 import {
   initTheme, initTabs, initSubject, initKey, showView, openMaterialsModal,
   renderMaterialCount, onView, renderKeyState,
-} from './ui.js?v=0d35ef34';
-import { renderHeaderChips } from './gamify.js?v=0d35ef34';
-import { initTutor } from './tutor.js?v=0d35ef34';
-import { initQuiz } from './quiz.js?v=0d35ef34';
-import { initPlan } from './plan.js?v=0d35ef34';
-import { initCards } from './cards.js?v=0d35ef34';
-import { initAudio } from './audio.js?v=0d35ef34';
-import { initSim } from './sim.js?v=0d35ef34';
-import { initLeague, handleFriendLink } from './league.js?v=0d35ef34';
-import { initCourse, renderCourse } from './course.js?v=0d35ef34';
-import { initSettings } from './settings.js?v=0d35ef34';
-import { initOnboarding, openOnboarding } from './onboarding.js?v=0d35ef34';
-import { initDifficulty } from './difficulty.js?v=0d35ef34';
-import { initScope } from './scope.js?v=0d35ef34';
+} from './ui.js?v=257500a3';
+import { renderHeaderChips } from './gamify.js?v=257500a3';
+import { initTutor } from './tutor.js?v=257500a3';
+import { initQuiz } from './quiz.js?v=257500a3';
+import { initPlan } from './plan.js?v=257500a3';
+import { initCards } from './cards.js?v=257500a3';
+import { initAudio } from './audio.js?v=257500a3';
+import { initSim } from './sim.js?v=257500a3';
+import { initLeague, handleFriendLink } from './league.js?v=257500a3';
+import { initCourse, renderCourse } from './course.js?v=257500a3';
+import { initSettings } from './settings.js?v=257500a3';
+import { initOnboarding, openOnboarding } from './onboarding.js?v=257500a3';
+import { initDifficulty } from './difficulty.js?v=257500a3';
+import { initScope } from './scope.js?v=257500a3';
 
 /* ---------------- 개발용 오류 표시 (?debug=1) ---------------- */
 window.__errors = [];
 const DEBUG = /(?:^|[?&])debug=1(?:&|$)/.test(location.search);
+/* ?debug=1 에서만: 프롬프트에 난이도·시험 범위가 실제로 들어가는지 확인용 */
+if (DEBUG) {
+  window.__aiTutor = {
+    learnerContext, getDifficulty, getScope, difficultyPrompt, getSetup,
+    storage: () => { const o = {}; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('aitutor.v1.')) o[k] = localStorage.getItem(k); } return o; },
+  };
+}
 function reportError(msg) {
   window.__errors.push(String(msg));
   if (!DEBUG) return;
