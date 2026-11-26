@@ -241,10 +241,12 @@ code{ font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9
 .status.ok{ background: color-mix(in srgb, var(--ok) 10%, transparent); border-color: color-mix(in srgb, var(--ok) 32%, transparent); color: var(--ok-ink); }
 .status[hidden]{ display: none; }
 .spinner{
-  width: 14px; height: 14px; border-radius: 50%; flex: none;
+  width: 14px; height: 14px; border-radius: 50%; flex: 0 0 auto; display: inline-block;
+  vertical-align: -2px;
   border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
   border-top-color: var(--accent);
   animation: spin .8s linear infinite;
+  box-sizing: border-box;
 }
 @keyframes spin{ to{ transform: rotate(360deg); } }
 
@@ -1330,5 +1332,208 @@ html[data-theme="light"] .face.back{ background: var(--surface-2); }
 .rank-empty{ list-style:none; padding: 14px 10px; text-align:center; font-size:12px; color: var(--muted); border:1px dashed var(--border); border-radius:12px; margin-top:8px; }
 
 /* status 안의 문장은 한 덩어리로 (flex 아이템 분할 방지) */
-.status > span{ flex:1 1 auto; min-width:0; display:block; }
-.status > span .spinner{ display:inline-block; vertical-align:-2px; margin-right:6px; }
+.status > span:not(.spinner){ flex:1 1 auto; min-width:0; display:block; }
+.status > span .spinner,
+.status > span.status-line > .spinner{ display:inline-block; vertical-align:-2px; margin-right:6px; }
+/* 상태 줄: 스피너는 항상 정원형 인라인, 글자는 줄바꿈 허용 */
+.status-line{ display:block; min-width:0; line-height:1.5; word-break:break-word; }
+.status-line b{ font-weight:800; }
+.status .spinner{ flex: 0 0 auto; }
+/* 버튼 안 스피너 */
+.primary .spinner, .ghost-btn .spinner, .onb-test-btn .spinner{
+  border-color: rgba(255,255,255,.45); border-top-color:#fff; margin-right:6px;
+}
+.primary:disabled .spinner{ animation-duration: 1s; }
+
+/* =========================================================
+   v3 — Step 2 학교·학기 확인 · 과목 확인 · 홈 시험 범위/자료 · 난이도
+   ========================================================= */
+
+/* ---- Step 1: 테스트 버튼 + 상태 영역 ---- */
+.onb-key-row{ margin-top: 12px; display:flex; gap:8px; }
+.onb-test-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height: 44px; padding: 0 18px; border-radius: 13px;
+  background: var(--surface-2); border:1.5px solid var(--border); color: var(--text);
+  font-size: 13.5px; font-weight: 800; transition: border-color .15s, transform .12s;
+}
+.onb-test-btn:hover{ border-color:#6f8bff; }
+.onb-test-btn:active{ transform: scale(.985); }
+.onb-test-btn:disabled{ opacity:.75; cursor: progress; }
+.onb-test-btn.busy{ border-color:#6f8bff; background: rgba(111,139,255,.14); }
+.onb-status-slot{ min-height: 24px; }
+.onb-status-slot .status{ margin-top: 10px; }
+
+/* ---- Step 2: 학년/나이 2열, 학기, 학교 확인 ---- */
+.onb-two{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.onb-two .onb-field{ margin-top: 18px; }
+.onb-age-hint{ margin-top: 6px; }
+.onb-semester{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.onb-sem-btn{
+  padding: 13px 14px; border-radius: 15px; text-align:left;
+  background: var(--surface); border:1.5px solid var(--border);
+  font-size: 14px; font-weight: 800; color: var(--text);
+  transition: border-color .15s, background .15s;
+}
+.onb-sem-btn small{ display:block; font-size: 10.5px; color: var(--muted); font-weight:600; margin-top:3px; }
+.onb-sem-btn.on{ border-color:#6f8bff; background: rgba(111,139,255,.14); }
+.onb-school-row{ display:flex; gap:8px; align-items:stretch; }
+.onb-school-row .onb-input{ flex:1; min-width:0; }
+.onb-check-btn{
+  flex:none; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height: 50px; padding: 0 16px; border-radius: 14px;
+  background: linear-gradient(135deg, #4b66ff, #7a63ff); color:#fff;
+  font-size: 13.5px; font-weight: 800; white-space: nowrap;
+  transition: filter .15s, transform .12s;
+}
+.onb-check-btn:hover{ filter: brightness(1.06); }
+.onb-check-btn:active{ transform: scale(.985); }
+.onb-check-btn:disabled{ opacity:.7; cursor: progress; }
+.onb-check-btn.busy{ filter: saturate(.8); }
+
+/* 학교·교육과정 확인 카드 */
+.school-card{
+  margin-top: 14px; padding: 14px; border-radius: 16px;
+  background: var(--surface); border:1px solid var(--border-soft);
+}
+.school-card.ai{ border-color: rgba(111,139,255,.45); background: rgba(111,139,255,.06); }
+.school-head{ display:flex; align-items:flex-start; gap:10px; }
+.school-ico{ font-size: 20px; line-height:1.2; }
+.school-title{ flex:1; min-width:0; }
+.school-title b{ display:block; font-size: 14.5px; }
+.school-title small{ display:block; font-size: 11.5px; color: var(--muted); }
+.school-sum{ margin: 10px 0 0; font-size: 12.5px; color: var(--text-2); line-height:1.65; }
+.school-focus{ margin: 8px 0 0; font-size: 12px; color: var(--text-2); }
+.school-focus b{ color: #9fb0ff; }
+.school-subj{ margin-top: 10px; }
+.school-subj-label{ display:block; font-size: 11px; color: var(--muted); font-weight:800; margin-bottom:6px; }
+.school-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.school-chip{
+  padding: 5px 10px; border-radius: 999px; font-size: 11.5px; font-weight:700;
+  background: var(--surface-2); border:1px solid var(--border); color: var(--text-2);
+}
+.school-note{ margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+.school-note.err{ color: var(--danger-ink); }
+
+/* ---- Step 5: 과목 확인 리스트 ---- */
+.onb-subj-list{ display:flex; flex-direction:column; gap:8px; margin-top: 14px; }
+.onb-subj-item{
+  display:flex; align-items:center; gap:10px; padding: 12px 14px; border-radius: 14px;
+  background: var(--surface); border:1.5px solid var(--border);
+}
+.onb-subj-item .os-ico{ font-size: 17px; }
+.onb-subj-item .os-name{ flex:1; min-width:0; font-size: 14px; font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.onb-subj-item .os-x{
+  flex:none; width: 30px; height: 30px; border-radius: 10px;
+  background: var(--surface-2); border:1px solid var(--border); color: var(--muted);
+  font-size: 12px; font-weight: 800;
+}
+.onb-subj-item .os-x:hover{ color: var(--danger); border-color: var(--danger); }
+.onb-custom-row{ display:flex; gap:8px; margin-top: 10px; }
+.onb-custom-row .onb-input{ flex:1; min-width:0; }
+.onb-custom-row .ghost-btn{ flex:none; min-height: 50px; }
+.onb-empty{ padding: 14px; text-align:center; font-size: 12.5px; color: var(--muted); border:1px dashed var(--border); border-radius: 14px; }
+
+/* ---- 홈: 난이도 칩 ---- */
+.diff-pill{ cursor:pointer; background: var(--surface-2); border:1px solid var(--border-soft); color: var(--text-2); }
+.diff-pill.on{ border-color: rgba(111,139,255,.55); color: #cdd6ff; background: rgba(111,139,255,.12); }
+.diff-pill:hover{ border-color: var(--accent); }
+
+/* ---- 난이도 평가 모달 ---- */
+.diff-intro{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom: 10px; }
+.diff-sbj{
+  padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 800;
+  background: var(--accent-soft); color: var(--accent-strong); border:1px solid rgba(111,139,255,.35);
+}
+.diff-lesson{ font-size: 12.5px; color: var(--muted); font-weight:700; }
+.diff-q{ margin: 0 0 12px; font-size: 13.5px; color: var(--text-2); }
+.diff-choices{ display:flex; flex-direction:column; gap: 10px; }
+.diff-choice{
+  display:grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto;
+  align-items:center; gap: 2px 10px; text-align:left;
+  padding: 13px 14px; border-radius: 15px;
+  background: var(--surface-2); border:1.5px solid var(--border); color: var(--text);
+  transition: border-color .15s, background .15s, transform .12s;
+}
+.diff-choice:hover{ transform: translateY(-1px); border-color: var(--accent); }
+.diff-choice .dc-ico{ grid-row: 1 / span 2; font-size: 22px; text-align:center; }
+.diff-choice b{ font-size: 14.5px; }
+.diff-choice small{ font-size: 11.5px; color: var(--muted); font-weight:600; }
+.diff-choice.on{ border-color:#6f8bff; background: rgba(111,139,255,.14); }
+.diff-prev{ margin: 12px 0 0; font-size: 11.5px; color: var(--muted); }
+
+/* ---- 홈: 시험 범위 · 자료 카드 ---- */
+.scope-card{
+  margin-top: 14px; padding: 16px 18px; border-radius: 20px;
+  background: var(--surface); border:1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.scope-head{ display:flex; align-items:center; gap:10px; }
+.scope-ico{ font-size: 20px; }
+.scope-title{ flex:1; min-width:0; }
+.scope-title b{ display:block; font-size: 14px; }
+.scope-title small{ display:block; font-size: 11.5px; color: var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.scope-badge{
+  flex:none; padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  background: var(--surface-2); border:1px solid var(--border); color: var(--muted);
+}
+.scope-badge.on{ color: var(--ok-ink); border-color: rgba(70,209,138,.4); background: rgba(70,209,138,.1); }
+.scope-current{
+  margin-top: 12px; padding: 12px 14px; border-radius: 14px;
+  background: var(--surface-2); border:1px solid var(--border-soft);
+}
+.sc-label{ font-size: 10.5px; font-weight: 800; color: var(--accent-strong); letter-spacing:.02em; }
+.sc-text{ margin: 4px 0 0; font-size: 12.5px; color: var(--text); line-height:1.6; }
+.sc-units{ display:flex; flex-wrap:wrap; gap:6px; margin-top: 8px; }
+.sc-units span{
+  padding: 4px 9px; border-radius: 8px; font-size: 11px; font-weight:700;
+  background: var(--surface-3); color: var(--text-2);
+}
+.sc-meta{ display:flex; flex-wrap:wrap; gap:10px; margin-top: 8px; font-size: 11px; color: var(--muted); font-weight:700; }
+.scope-mats{ display:flex; flex-wrap:wrap; gap:6px; margin-top: 10px; }
+.scope-mat{
+  display:inline-flex; align-items:center; gap:6px; padding: 6px 10px; border-radius: 10px;
+  background: var(--surface-2); border:1px solid var(--border); font-size: 11.5px; color: var(--text-2);
+}
+.scope-mat .sm-x{ color: var(--muted); font-size: 10px; }
+.scope-mat .sm-x:hover{ color: var(--danger); }
+.scope-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top: 12px; }
+.scope-btn{
+  display:inline-flex; align-items:center; gap:6px;
+  padding: 9px 13px; border-radius: 12px; font-size: 12.5px; font-weight: 800;
+  background: var(--surface-2); border:1px solid var(--border); color: var(--text);
+}
+.scope-btn span{ font-size: 14px; }
+.scope-btn:hover{ border-color: var(--accent); }
+.scope-btn.ghost{ color: var(--text-2); border-style: dashed; }
+.scope-fine{ margin: 10px 0 0; font-size: 11px; color: var(--muted); }
+
+/* ---- 사전 질문 모달 ---- */
+.sq-scope{
+  padding: 12px 14px; border-radius: 14px; background: var(--surface-2);
+  border:1px solid var(--border-soft); margin-bottom: 14px;
+}
+.sq-badge{
+  display:inline-block; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight:800;
+  background: var(--accent-soft); color: var(--accent-strong); margin-bottom: 6px;
+}
+.sq-scope b{ display:block; font-size: 13.5px; }
+.sq-scope p{ margin: 4px 0 0; font-size: 12px; color: var(--text-2); line-height:1.6; }
+.sq-goals{ display:flex; gap:8px; flex-wrap:wrap; margin-top: 4px; }
+.sq-goal{
+  flex:1 1 90px; padding: 11px 12px; border-radius: 13px; text-align:left;
+  background: var(--surface-2); border:1.5px solid var(--border); color: var(--text);
+}
+.sq-goal b{ display:block; font-size: 13.5px; }
+.sq-goal small{ display:block; font-size: 10.5px; color: var(--muted); font-weight:600; margin-top:2px; }
+.sq-goal.on{ border-color:#6f8bff; background: rgba(111,139,255,.14); }
+.scope-examples{ display:flex; flex-wrap:wrap; gap:6px; margin-top: 8px; }
+.ex-chip{
+  padding: 6px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700;
+  background: var(--surface-2); border:1px dashed var(--border); color: var(--text-2);
+}
+.ex-chip:hover{ border-color: var(--accent); color: var(--text); }
+@media (max-width: 420px){
+  .onb-two{ grid-template-columns: 1fr; gap: 0; }
+  .scope-card{ padding: 14px; border-radius: 18px; }
+}

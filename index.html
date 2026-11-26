@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-<link rel="stylesheet" href="style.css?v=825eb38c" />
+<link rel="stylesheet" href="style.css?v=0d35ef34" />
 <script>
 /* 저장된 테마를 첫 화면 전에 바로 적용(깜빡임 방지) */
 try {
@@ -86,6 +86,7 @@ try {
           <div class="exam-pills">
             <span class="epill" id="courseDday">시험 날짜 미정</span>
             <span class="epill"><i class="pill-dot"></i> 목표까지 <b id="courseGoalLeft">100%</b></span>
+            <button class="epill diff-pill" id="diffPill" type="button">🎚️ 난이도 <b>자동</b></button>
           </div>
 
           <div class="lesson-path" id="lessonPath"></div>
@@ -97,6 +98,9 @@ try {
           <p class="lesson-hint" id="lessonHint">오늘의 한 걸음만 해도 충분해요.</p>
         </div>
       </div>
+
+      <!-- 시험 범위 · 자료 (과목별) -->
+      <div class="scope-card" id="scopeCard"></div>
 
       <div class="tool-row" id="toolRow">
         <button class="tool-chip" data-goto="plan" type="button"><span>🗓️</span>시험 계획</button>
@@ -472,6 +476,6 @@ try {
 
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-<script type="module" src="js/app.js?v=825eb38c"></script>
+<script type="module" src="js/app.js?v=0d35ef34"></script>
 </body>
 </html>

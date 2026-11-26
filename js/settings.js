@@ -4,16 +4,18 @@
 import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
-  saveSettings,
-} from './core.js?v=825eb38c';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=825eb38c';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=825eb38c';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=825eb38c';
+  saveSettings, getDifficulty, DIFFICULTY_LEVELS,
+} from './core.js?v=0d35ef34';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=0d35ef34';
+import { openDifficultyPrompt } from './difficulty.js?v=0d35ef34';
+import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=0d35ef34';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=0d35ef34';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=0d35ef34';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=825eb38c';
-import { openOnboarding } from './onboarding.js?v=825eb38c';
+} from './sync.js?v=0d35ef34';
+import { openOnboarding } from './onboarding.js?v=0d35ef34';
 
 const el = (id) => document.getElementById(id);
 
@@ -132,7 +134,17 @@ export function renderSettings() {
         </label>
         <label class="field"><span>학년</span>
           <select id="setGrade">
-            ${['1학년', '2학년', '3학년', '4학년', '5학년', '6학년', '대학 1학년', '대학 2학년', '대학 3학년', '대학 4학년'].map(c => `<option ${setup.grade === c ? 'selected' : ''}>${c}</option>`).join('')}
+            ${gradesFor(setup.level || '고등학교').map(c => `<option ${setup.grade === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field"><span>학기</span>
+          <select id="setSemester">
+            ${['1학기', '2학기'].map(c => `<option ${(setup.semester || '1학기') === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </label>
+        <label class="field"><span>나이 (만)</span>
+          <select id="setAge">
+            ${Array.from({ length: 20 }, (_, i) => i + 8).map(a => `<option value="${a}" ${Number(setup.age || ageForGrade(setup.level, setup.grade)) === a ? 'selected' : ''}>만 ${a}세</option>`).join('')}
           </select>
         </label>
         <label class="field"><span>현재 수준</span>
@@ -182,6 +194,24 @@ export function renderSettings() {
         <button class="ghost-btn small" id="setCurRefresh" type="button">🔄 AI로 다시 확인</button>
       </div>
       <div class="status" id="setCurStatus" hidden></div>
+    </div>
+
+    <!-- 수업 난이도 -->
+    <div class="panel">
+      <div class="panel-head tight"><b>수업 난이도</b><span class="week-label">수업이 끝나면 AI가 물어봐요</span></div>
+      <p class="set-note" style="margin-top:0">난이도 평가(쉬웠어요·보통이에요·어려웠어요)는 과목별로 저장되고, 그 과목의 개념 설명·힌트·문제 출제 난이도에 바로 반영돼요.</p>
+      <div class="cur-mini">
+        ${subjIds.map(id => {
+          const rec = getDifficulty(id);
+          const item = rec.level ? DIFFICULTY_LEVELS[rec.level] : null;
+          const s = subjectById(id) || { label: String(id).replace(/^custom:/, ''), icon: '✏️' };
+          return `<div class="cur-mini-row">
+            <span class="cm-ico">${subjectIcon(id)}</span>
+            <div class="cm-main"><b>${escapeHtml(s.label)}</b><small>${item ? `${item.icon} ${item.label} · ${item.desc}` : '아직 평가 없음'}</small></div>
+            <button class="ghost-btn small" data-diffset="${escapeHtml(id)}" type="button">${item ? '바꾸기' : '평가하기'}</button>
+          </div>`;
+        }).join('')}
+      </div>
     </div>
 
     <!-- 과목 -->
@@ -307,7 +337,7 @@ export function renderSettings() {
         • AI 요청은 입력한 내용이 Google Gemini API로만 전달됩니다.<br/>
         • Google Drive 백업은 내 계정의 앱 전용 폴더(appDataFolder)에만 저장되고, API 키는 백업에서 제외됩니다.<br/>
         • 공용 PC에서는 사용 후 API 키를 삭제해 주세요.<br/>
-        • 앱 버전 2.0 · GitHub Pages 정적 배포
+        • 앱 버전 3.0 · GitHub Pages 정적 배포
       </p>
     </div>`;
 
@@ -346,6 +376,8 @@ function bindSettings(host) {
       country: host.querySelector('#setCountry').value,
       level: host.querySelector('#setLevel').value,
       grade: host.querySelector('#setGrade').value,
+      semester: host.querySelector('#setSemester').value,
+      age: Number(host.querySelector('#setAge').value) || ageForGrade(host.querySelector('#setLevel').value, host.querySelector('#setGrade').value),
       levelSelf: host.querySelector('#setSelf').value,
       school: host.querySelector('#setSchool').value.trim(),
       schoolNote: host.querySelector('#setSchoolNote').value.trim(),
@@ -353,7 +385,7 @@ function bindSettings(host) {
       dailyMinutes: Number(host.querySelector('#setMinutes').value || 60),
       goalPct: Number(host.querySelector('#setGoal').value || 70),
     };
-    const keyOf = (s) => ['country', 'level', 'grade', 'school', 'schoolNote'].map(k => String(s[k] || '')).join('|');
+    const keyOf = (s) => ['country', 'level', 'grade', 'semester', 'school', 'schoolNote'].map(k => String(s[k] || '')).join('|');
     const changed = keyOf(before) !== keyOf(patch);
     saveSetup(patch);
     renderCourse();
@@ -372,6 +404,9 @@ function bindSettings(host) {
     runCurriculumRefresh(host, ids);
   });
   host.querySelector('#setAddSubj')?.addEventListener('click', () => openAddSubjectModal());
+  host.querySelectorAll('[data-diffset]').forEach(b => b.addEventListener('click', () => {
+    openDifficultyPrompt({ subjectId: b.dataset.diffset, manual: true, onPick: () => renderSettings() });
+  }));
   host.querySelector('#setOnboarding')?.addEventListener('click', () => openOnboarding(true));
   host.querySelectorAll('[data-delsub]').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.delsub;
@@ -385,7 +420,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=825eb38c').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=0d35ef34').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {

@@ -4,14 +4,15 @@
 import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
-  getSetup, saveSetup, learnerContext, uid,
-} from './core.js?v=825eb38c';
-import { showView, openKeyModal } from './ui.js?v=825eb38c';
+  getSetup, saveSetup, learnerContext, uid, getDifficulty, DIFFICULTY_LEVELS,
+} from './core.js?v=0d35ef34';
+import { showView, openKeyModal } from './ui.js?v=0d35ef34';
+import { openDifficultyPrompt } from './difficulty.js?v=0d35ef34';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=825eb38c';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=825eb38c';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=825eb38c';
+} from './gamify.js?v=0d35ef34';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=0d35ef34';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=0d35ef34';
 
 const el = (id) => document.getElementById(id);
 
@@ -106,6 +107,12 @@ export function markStudied(type) {
   emit();
   renderCourse();
   toast(`✅ 수업 완료: ${lesson.title}`, 'xp', 2200);
+  document.dispatchEvent(new CustomEvent('app:lesson-complete', { detail: { type, lessonTitle: lesson.title, subjectId: c.subjectId } }));
+}
+
+/** 홈 화면 최상단의 수업 카드를 다시 그리는 외부용 진입점 */
+export function redrawCourse() {
+  renderCourse();
 }
 
 /* ---------------- render: top bar + course ---------------- */
@@ -144,8 +151,21 @@ export function renderCourse() {
   const goalPct = Number(setup.goalPct) || 70;
   el('courseGoalLeft').textContent = Math.max(0, goalPct - prog.pct) + '%';
 
+  renderDifficultyPill(c.subjectId);
   renderLessonPath(c, prog);
   renderTodayStrip();
+}
+
+function renderDifficultyPill(subjectId) {
+  const pill = el('diffPill');
+  if (!pill) return;
+  const rec = getDifficulty(subjectId);
+  const item = rec.level ? DIFFICULTY_LEVELS[rec.level] : null;
+  pill.innerHTML = item
+    ? `${item.icon} 난이도 <b>${item.short}</b>`
+    : '🎚️ 난이도 <b>자동</b>';
+  pill.classList.toggle('on', !!item);
+  pill.title = item ? `최근 평가: ${item.label} · 눌러서 바꿔요` : '수업 후 평가하면 AI가 난이도를 맞춰요';
 }
 
 function renderLessonPath(c, prog) {
@@ -203,29 +223,36 @@ export function startLesson(lesson) {
   const c = getCourse();
   const topic = c.unitTitle;
   const t = lesson.type;
+  const lessonTopic = String(lesson.title || '').replace(/^\d+\.\s*/, '').trim();
+  const focus = (c.fromScope && lessonTopic) ? `${lessonTopic}${lesson.sub ? ' — ' + lesson.sub : ''}` : topic;
   if (t === 'tutor') {
     const input = el('chatInput');
-    if (input && !input.value.trim()) input.value = `${topic} 중 "${lesson.title.replace(/^\d+\.\s*/, '')}" 부분을 처음부터 가르쳐 줘.`;
+    if (input && !input.value.trim()) {
+      input.value = c.fromScope
+        ? `이번 시험 범위(${topic}) 중 "${lessonTopic}" 부분을 처음부터 가르쳐 줘.${lesson.sub ? ' 특히 ' + lesson.sub + '.' : ''}`
+        : `${topic} 중 "${lessonTopic}" 부분을 처음부터 가르쳐 줘.`;
+    }
     showView('tutor');
     setTimeout(() => el('chatInput') && el('chatInput').focus(), 260);
   } else if (t === 'cards') {
-    if (el('cardTopic')) el('cardTopic').value = topic;
+    if (el('cardTopic')) el('cardTopic').value = focus;
     showView('cards');
   } else if (t === 'quiz') {
-    if (el('qScope')) el('qScope').value = topic;
+    if (el('qScope')) el('qScope').value = focus;
+    if (lesson.kind === '심화' && el('qLevel')) el('qLevel').value = '심화';
     showView('quiz');
   } else if (t === 'exam') {
-    if (el('qScope')) el('qScope').value = topic;
+    if (el('qScope')) el('qScope').value = focus;
     if (el('qCount')) el('qCount').value = '10';
     showView('quiz');
     const examBtn = document.querySelector('#quizModeSeg [data-qmode="exam"]');
     if (examBtn) examBtn.click();
   } else if (t === 'oral') {
-    if (el('oralScope')) el('oralScope').value = topic;
+    if (el('oralScope')) el('oralScope').value = focus;
     showView('audio');
     document.dispatchEvent(new CustomEvent('app:audio-pane', { detail: 'oral' }));
   } else if (t === 'podcast') {
-    if (el('podTopic')) el('podTopic').value = topic;
+    if (el('podTopic')) el('podTopic').value = focus;
     showView('audio');
     document.dispatchEvent(new CustomEvent('app:audio-pane', { detail: 'podcast' }));
   } else if (t === 'sim') {
@@ -405,6 +432,65 @@ function openCourseInfo() {
 }
 
 /* ---------------- AI curriculum ---------------- */
+/** 듀오링고식 레슨 종류 → 앱 레슨 타입 */
+export const KIND_TYPE = {
+  '개념': 'tutor', '암기': 'cards', '문제': 'quiz', '심화': 'quiz',
+  '모의고사': 'exam', '구술': 'oral', '오디오': 'podcast', '실험': 'sim',
+};
+const TYPE_BLUEPRINT = {};
+LESSON_BLUEPRINT.forEach(b => { TYPE_BLUEPRINT[b.type] = b; });
+
+function blueprintFor(type, kind) {
+  const b = TYPE_BLUEPRINT[type] || LESSON_BLUEPRINT[0];
+  if (type === 'quiz' && kind === '심화') return { ...b, sub: '심화·응용 문제 · 즉시 채점' };
+  if (type === 'exam') return { ...b, sub: '시간 제한 · 약점 분석' };
+  return b;
+}
+
+/**
+ * 시험 범위·자료에서 새로 만든 레슨 경로를 과목 코스에 적용한다.
+ * 이미 완료한 레슨은 제목이 같은 경우 완료 상태를 유지한다.
+ */
+export function applyLessonPath(subjectId, path, meta = {}) {
+  if (!path || !Array.isArray(path.steps) || !path.steps.length) return null;
+  const prev = getCourse(subjectId);
+  const doneByTitle = {};
+  (prev.lessons || []).forEach(l => {
+    const key = String(l.title || '').replace(/^\d+\.\s*/, '').trim();
+    if (l.done) doneByTitle[key] = true;
+  });
+  const lessons = path.steps.slice(0, 12).map((step, i) => {
+    const kind = step.kind && KIND_TYPE[step.kind] ? step.kind : '개념';
+    const type = KIND_TYPE[kind] || 'tutor';
+    const b = blueprintFor(type, kind);
+    const base = String(step.title || b.label).trim();
+    return {
+      id: 'l' + i,
+      type,
+      kind,
+      icon: b.icon,
+      title: `${i + 1}. ${base}`,
+      sub: String(step.sub || b.sub || '').trim(),
+      done: !!doneByTitle[base],
+      completedAt: 0,
+    };
+  });
+  const c = {
+    subjectId,
+    unitTitle: String(path.title || meta.title || prev.unitTitle || '나의 학습 코스').trim(),
+    curriculumName: String(meta.curriculumName || prev.curriculumName || '').trim(),
+    source: meta.source || (path.source === 'ai' ? 'ai' : 'basic'),
+    scopeSource: meta.scopeSource || '',
+    fromScope: true,
+    updatedAt: Date.now(),
+    lessons,
+    createdAt: prev.createdAt || Date.now(),
+    ai: path.source === 'ai',
+  };
+  putCourse(c);
+  return c;
+}
+
 /** 기존 진도를 지키면서 새 교육과정(단원·주제)을 코스에 적용한다 */
 export function applyCurriculum(subjectId, cur) {
   if (!cur || !Array.isArray(cur.topics) || !cur.topics.length) return null;
@@ -549,6 +635,9 @@ export function initCourse() {
   el('chStart').addEventListener('click', () => { showView('quiz'); startDaily(); });
   el('keyBannerBtn').addEventListener('click', () => openKeyModal());
   el('profileBtn').addEventListener('click', () => showView('settings'));
+  el('diffPill')?.addEventListener('click', () => {
+    openDifficultyPrompt({ subjectId: courseId(), manual: true });
+  });
 
   document.querySelectorAll('.sheet-back').forEach(back => {
     back.addEventListener('click', (e) => { if (e.target === back) closeSheets(); });

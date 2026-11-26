@@ -45,6 +45,8 @@ export const K = {
   daily: 'aitutor.v1.daily',
   setup: 'aitutor.v1.setup',
   courses: 'aitutor.v1.courses',
+  difficulty: 'aitutor.v1.difficulty',
+  scopes: 'aitutor.v1.scopes',
 };
 
 /* ---------------- storage ---------------- */
@@ -111,24 +113,103 @@ export function learnerLabel() {
   if (!s.level && !s.grade) return '고등학생';
   return `${s.country || '대한민국'} ${s.level || ''} ${s.grade || ''}`.trim();
 }
-export function learnerContextFrom(s) {
-  if (!s) return '[학생 정보] 대한민국 고등학교 1학년. 한국 교육과정 기준으로 설명한다.';
+export function learnerContextFrom(s, subjectId) {
+  const subj = subjectId || subjectKey();
+  if (!s) {
+    return ['[학생 정보] 대한민국 고등학교 1학년 1학기. 한국 교육과정 기준으로 설명한다.', difficultyPrompt(subj)].filter(Boolean).join('\n');
+  }
   const dd = s.examDate ? dday(s.examDate) : null;
+  const semester = s.semester || '1학기';
   const lines = [
     `[학생 정보]`,
     `- 국가·교육과정: ${s.country || '대한민국'}`,
     `- 학교급·학년: ${s.level || ''} ${s.grade || ''}`.trim(),
+    `- 학기: ${semester}`,
+    s.age ? `- 나이: 만 ${s.age}세` : '',
     s.school ? `- 학교: ${s.school}` : '',
     s.schoolNote ? `- 학교 교육과정 메모: ${s.schoolNote}` : '',
+    (s.schoolInfo && s.schoolInfo.summary) ? `- 학교·학기 교육과정 메모: ${String(s.schoolInfo.summary).slice(0, 300)}` : '',
     `- 스스로 평가한 수준: ${s.levelSelf || '보통'}`,
     s.examDate ? `- 시험: ${s.examDate} (${dd != null ? 'D-' + Math.max(0, dd) : '예정'}), 목표: ${s.goalPct || 70}%` : `- 시험: 미정, 목표: ${s.goalPct || 70}%`,
     `- 하루 학습 가능 시간: ${s.dailyMinutes || 60}분`,
+    scopePrompt(subj),
+    difficultyPrompt(subj),
     '',
-    `이 학생의 국가·학교급·학년 교육과정에 맞는 단원 범위와 설명 수준으로 답한다. 시험 범위가 있으면 그 범위를 우선한다.`,
+    `이 학생의 국가·학교급·학년·학기 교육과정에 맞는 단원 범위와 설명 수준으로 답한다. 시험 범위가 있으면 그 범위를 우선한다.`,
   ];
   return lines.filter(Boolean).join('\n');
 }
-export function learnerContext() { return learnerContextFrom(getSetup()); }
+export function learnerContext(subjectId) { return learnerContextFrom(getSetup(), subjectId); }
+
+/* ---------------- 난이도 피드백 (과목별) ---------------- */
+export const DIFFICULTY_LEVELS = {
+  easy: {
+    id: 'easy', label: '쉬웠어요', icon: '😌', short: '심화',
+    toast: '조금 더 어렵고 깊게 갈게요',
+    desc: '설명은 짧게, 심화·응용 문제 위주',
+    prompt: '- 난이도 피드백: 이 과목에서 학생은 최근 수업을 "쉬웠어요"라고 평가했다. 기초 설명·예시는 줄이고 바로 핵심 정리와 심화·응용·함정 문제, 서술형·비교·추론 위주의 질문으로 진도를 빠르게 가져간다. 확인 문제도 한 단계 높게 낸다.',
+  },
+  normal: {
+    id: 'normal', label: '보통이에요', icon: '🙂', short: '보통',
+    toast: '지금 난이도로 이어갈게요',
+    desc: '지금 수준에 맞춰 균형 있게',
+    prompt: '- 난이도 피드백: 이 과목은 "보통이에요"로 평가됐다. 지금 설명 수준과 문제 난이도를 유지하되, 막히면 힌트를 한 단계씩 준다.',
+  },
+  hard: {
+    id: 'hard', label: '어려웠어요', icon: '😵', short: '기초',
+    toast: '더 기초부터 친절하게 설명할게요',
+    desc: '선수 개념부터 아주 작은 단계로',
+    prompt: '- 난이도 피드백: 이 과목에서 학생은 최근 수업을 "어려웠어요"라고 평가했다. 선수 개념부터 되짚고, 일상 비유와 아주 작은 예시로 한 번에 한 개념만 설명한다. 정답을 바로 주지 않더라도 힌트를 더 많이·더 구체적으로 주고, 문제는 가장 기본적인 것부터 시작해 조금씩 올린다. 어려운 용어는 풀어서 쓴다.',
+  },
+};
+
+export function getDifficulty(subjectId) {
+  const key = subjectId || subjectKey();
+  const map = load(K.difficulty, {});
+  const rec = map[key] || null;
+  if (!rec) return { subjectId: key, level: '', updatedAt: 0, count: 0 };
+  return { subjectId: key, level: String(rec.level || ''), updatedAt: Number(rec.updatedAt) || 0, count: Number(rec.count) || 0 };
+}
+
+export function setDifficulty(subjectId, level) {
+  const key = subjectId || subjectKey();
+  const map = load(K.difficulty, {});
+  const prev = map[key] || { history: [] };
+  const history = Array.isArray(prev.history) ? prev.history.slice(-19) : [];
+  history.push({ level: String(level), at: Date.now() });
+  map[key] = { level: String(level), updatedAt: Date.now(), count: (Number(prev.count) || 0) + 1, history };
+  save(K.difficulty, map);
+  document.dispatchEvent(new CustomEvent('app:difficulty', { detail: { subjectId: key, level } }));
+  return map[key];
+}
+
+export function difficultyPrompt(subjectId) {
+  const rec = getDifficulty(subjectId);
+  const item = rec.level ? DIFFICULTY_LEVELS[rec.level] : null;
+  return item ? item.prompt : '';
+}
+
+/* ---------------- 시험 범위 · 자료 (과목별) ---------------- */
+export function getScope(subjectId) {
+  const key = subjectId || subjectKey();
+  const map = load(K.scopes, {});
+  return Object.assign({ subjectId: key, scopeText: '', source: '', summary: '', units: [], materialIds: [], updatedAt: 0, pathTitle: '', examDate: '', goalPct: 0, understanding: '' }, map[key] || {});
+}
+export function saveScope(subjectId, patch) {
+  const key = subjectId || subjectKey();
+  const map = load(K.scopes, {});
+  map[key] = Object.assign(getScope(key), patch || {}, { subjectId: key, updatedAt: Date.now() });
+  save(K.scopes, map);
+  document.dispatchEvent(new CustomEvent('app:scope', { detail: { subjectId: key } }));
+  return map[key];
+}
+export function scopePrompt(subjectId) {
+  const sc = getScope(subjectId);
+  if (!sc.scopeText) return '';
+  const src = sc.source === 'pdf' ? '올린 PDF' : sc.source === 'photo' ? '올린 필기·교재 사진' : sc.source === 'manual' ? '학생이 직접 적은 범위' : '정리한 범위';
+  const units = Array.isArray(sc.units) && sc.units.length ? ` (단원: ${sc.units.slice(0, 8).join(', ')})` : '';
+  return `- 이번 시험 범위(${src}): ${String(sc.scopeText).slice(0, 600)}${units}`;
+}
 
 /* ---------------- dom utils ---------------- */
 export const $ = (sel, root = document) => root.querySelector(sel);

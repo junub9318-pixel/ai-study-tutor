@@ -5,7 +5,7 @@
    ========================================================= */
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup,
-} from './core.js?v=825eb38c';
+} from './core.js?v=0d35ef34';
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -166,6 +166,9 @@ function learnerLines(learner) {
   return [
     `- 국가·교육과정: ${s.country || '대한민국'}`,
     `- 학교급·학년: ${[s.level, s.grade].filter(Boolean).join(' ') || '고등학교 1학년'}`,
+    `- 학기: ${s.semester || '1학기'}`,
+    s.age ? `- 나이: 만 ${s.age}세` : '',
+    (s.schoolInfo && s.schoolInfo.summary) ? `- 학교 교육과정 메모: ${String(s.schoolInfo.summary).slice(0, 300)}` : '',
     s.school ? `- 학교: ${s.school}` : '',
     s.schoolNote ? `- 학교 교육과정 메모: ${s.schoolNote}` : '',
     s.levelSelf ? `- 학생 수준: ${s.levelSelf}` : '',
@@ -272,5 +275,326 @@ export function isBasicOnly(map) {
   return list.length > 0 && list.every(c => c && c.source !== 'ai');
 }
 
+/* =========================================================
+   학교·학년·학기 확인 → 교육과정 선파악
+   ========================================================= */
+export const SCHOOL_SCHEMA = {
+  type: 'object',
+  properties: {
+    found: { type: 'boolean' },
+    schoolName: { type: 'string' },
+    region: { type: 'string' },
+    schoolType: { type: 'string' },
+    curriculumName: { type: 'string' },
+    summary: { type: 'string' },
+    semesterFocus: { type: 'string' },
+    subjects: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { name: { type: 'string' }, kind: { type: 'string' } },
+        required: ['name'],
+      },
+    },
+    note: { type: 'string' },
+  },
+  required: ['summary', 'subjects'],
+};
+
+const SUBJECT_NAME_MAP = [
+  [/국어|문학|독서|화법|작문/, 'korean'],
+  [/영어/, 'english'],
+  [/수학|미적분|기하|확률과/, 'math'],
+  [/사회|지리|경제|윤리|정치|법|세계사/, 'social'],
+  [/과학|물리|화학|생물|생명|지구/, 'science'],
+  [/한국사|역사/, 'history'],
+  [/인공지능|정보|코딩|컴퓨터|소프트웨어/, 'ai'],
+];
+
+/** 과목 이름을 앱의 과목 id로 (없으면 custom:이름) */
+export function subjectIdFromName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return '';
+  const direct = SUBJECTS.find(s => s.label === raw || s.id === raw);
+  if (direct) return direct.id;
+  for (const [re, id] of SUBJECT_NAME_MAP) if (re.test(raw)) return id;
+  return 'custom:' + raw;
+}
+
+const GRADE_STEPS = {
+  '초등학교': ['1', '2', '3', '4', '5', '6'],
+  '중학교': ['1', '2', '3'],
+  '고등학교': ['1', '2', '3'],
+  '대학교': ['1', '2', '3', '4'],
+};
+
+/** 학년 → 권장 만 나이 */
+export function ageForGrade(level, grade) {
+  const n = parseInt(String(grade || '').replace(/[^0-9]/g, ''), 10) || 1;
+  if (level === '초등학교') return 6 + n;
+  if (level === '중학교') return 12 + n;
+  if (level === '고등학교') return 15 + n;
+  if (level === '대학교') return 18 + n;
+  return 15 + n;
+}
+export function gradesFor(level) {
+  const nums = GRADE_STEPS[level] || GRADE_STEPS['고등학교'];
+  return nums.map(n => (level === '대학교' ? `대학 ${n}학년` : `${n}학년`));
+}
+
+const BASIC_SUBJECTS_BY_LEVEL = {
+  '초등학교': ['국어', '수학', '영어', '사회', '과학'],
+  '중학교': ['국어', '영어', '수학', '사회', '과학', '역사'],
+  '고등학교': ['공통국어', '공통수학', '공통영어', '통합사회', '통합과학', '한국사', '인공지능기초'],
+  '대학교': ['전공 기초', '교양 글쓰기', '대학 영어'],
+};
+
+/** 키가 없을 때 쓰는 학교·교육과정 요약 (기본값) */
+export function basicSchoolInfo(info = {}) {
+  const country = info.country || '대한민국';
+  const level = info.level || '고등학교';
+  const grade = info.grade || '1학년';
+  const semester = info.semester || '1학기';
+  const names = BASIC_SUBJECTS_BY_LEVEL[level] || BASIC_SUBJECTS_BY_LEVEL['고등학교'];
+  const curriculumName = country === '대한민국' ? (level === '고등학교' ? '2022 개정 교육과정' : '기본 교육과정') : `${country} 국가 교육과정`;
+  return {
+    found: false,
+    verified: false,
+    schoolName: info.school || '',
+    region: '',
+    schoolType: level,
+    curriculumName,
+    summary: `${country} ${level} ${grade} ${semester} 기준입니다. ${info.school ? info.school + '의 ' : ''}${curriculumName}에서 이 학기에 배우는 과목은 ${names.join('·')} 등입니다. AI 키를 연결하면 학교와 교육과정을 실제로 확인해 요약해 줘요.`,
+    semesterFocus: `${semester} 중간·기말 범위는 학교 교육과정 편성표와 교과서 목차로 확정해요.`,
+    subjects: names.map(n => ({ name: n, id: subjectIdFromName(n), kind: '기본' })),
+    note: 'API 키 없이 만든 기본 안내입니다.',
+    source: 'basic',
+  };
+}
+
+const SCHOOL_SYSTEM = `너는 각국 학교 교육과정에 정통한 학습 설계자다. 학생이 입력한 국가·학교급·학년·나이·학기·학교명을 보고 ① 학교를 확인하고 ② 그 학년·학기의 교육과정을 미리 파악해 요약한다.
+
+규칙:
+- 학교명이 실제 학교로 확인되면 found=true, region(지역)·schoolType(설립 구분)을 채운다. 확인되지 않으면 found=false로 두고 입력한 이름을 그대로 schoolName에 쓰며 일반 교육과정으로 요약한다. 없는 학교 정보를 지어내지 않는다.
+- curriculumName: 그 나라의 실제 교육과정 이름 (대한민국이면 예: "2022 개정 교육과정 · 고등학교 1학년"). 40자 이내.
+- summary: 이 학교·학년·학기의 교육과정을 3~4문장으로 요약. 어떤 과목을 배우고, 무엇이 공통·선택인지, 내신·평가 방식의 특징을 학생이 바로 이해할 수 있게.
+- semesterFocus: 이번 학기의 중점(예: "1학기 — 공통수학 1(다항식~이차함수), 통합과학 1~3단원"). 60자 이내.
+- subjects: 이 학년·학기에 실제로 배우는 과목 5~10개. name은 실제 교과명(예: "공통수학 1", "통합과학", "한국사"), kind는 "공통"·"선택"·"전공" 중 하나.
+- 확실하지 않은 내용은 일반적인 편성으로 채우고, 그렇게 채운 사실을 note에 밝힌다.`;
+
+function normalizeSchool(data, info) {
+  const base = basicSchoolInfo(info);
+  const subjects = (data && Array.isArray(data.subjects) ? data.subjects : [])
+    .map(s => ({
+      name: String((s && s.name) || '').trim(),
+      kind: String((s && s.kind) || '공통').trim(),
+    }))
+    .filter(s => s.name)
+    .slice(0, 12)
+    .map(s => Object.assign(s, { id: subjectIdFromName(s.name) }));
+  return {
+    found: !!(data && data.found),
+    verified: true,
+    schoolName: String((data && data.schoolName) || info.school || '').trim(),
+    region: String((data && data.region) || '').trim(),
+    schoolType: String((data && data.schoolType) || info.level || '').trim(),
+    curriculumName: String((data && data.curriculumName) || base.curriculumName).trim().slice(0, 60),
+    summary: String((data && data.summary) || base.summary).trim().slice(0, 700),
+    semesterFocus: String((data && data.semesterFocus) || '').trim().slice(0, 160),
+    subjects: subjects.length ? subjects : base.subjects,
+    note: String((data && data.note) || '').trim().slice(0, 200),
+    source: 'ai',
+  };
+}
+
+/**
+ * 학교·학년·학기 확인 + 교육과정 선파악. 절대 throw 하지 않는다.
+ * @returns {Promise<object>} {found, schoolName, region, curriculumName, summary, semesterFocus, subjects, source, error?}
+ */
+export async function verifySchool(info = {}, { signal } = {}) {
+  if (!getKey()) return basicSchoolInfo(info);
+  const user = [
+    `국가: ${info.country || '대한민국'}`,
+    `교육 단계: ${info.level || '고등학교'}`,
+    `학년: ${info.grade || '1학년'}${info.age ? ` (만 ${info.age}세)` : ''}`,
+    `학기: ${info.semester || '1학기'}`,
+    `학교명: ${info.school || '(모름)'}`,
+    info.schoolNote ? `학교 메모: ${info.schoolNote}` : '',
+  ].filter(Boolean).join('\n');
+  const base = { system: SCHOOL_SYSTEM, parts: [{ text: user }], schema: SCHOOL_SCHEMA, temperature: 0.3, maxTokens: 1600, signal };
+  try {
+    let out;
+    try {
+      out = await generateJSON({ ...base, tools: [{ google_search: {} }] });
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw e;
+      out = await generateJSON(base);
+    }
+    return normalizeSchool(out, info);
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    const b = basicSchoolInfo(info);
+    b.error = (e && e.message) || 'AI가 학교를 확인하지 못했어요.';
+    return b;
+  }
+}
+
+/* =========================================================
+   시험 범위 파악 · 레슨 경로(듀오링고식) 생성
+   ========================================================= */
+export const SCOPE_SCHEMA = {
+  type: 'object',
+  properties: {
+    scopeText: { type: 'string' },
+    units: { type: 'array', items: { type: 'string' } },
+    title: { type: 'string' },
+    summary: { type: 'string' },
+    note: { type: 'string' },
+  },
+  required: ['scopeText'],
+};
+
+export const LESSON_STEPS = ['개념', '암기', '문제', '심화', '모의고사', '구술', '오디오', '실험'];
+
+export const PATH_SCHEMA = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    steps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          kind: { type: 'string', enum: LESSON_STEPS },
+          title: { type: 'string' },
+          sub: { type: 'string' },
+        },
+        required: ['kind', 'title'],
+      },
+    },
+    note: { type: 'string' },
+  },
+  required: ['title', 'steps'],
+};
+
+const SCOPE_SYSTEM = `너는 시험 범위를 정리하는 학습 도우미다. 학생이 올린 자료(PDF 글자 또는 필기·교재 사진)를 읽고, 이번 시험에 들어갈 범위를 정확하게 뽑아낸다.
+
+규칙:
+- scopeText: 시험 범위를 한두 문장으로. 교과서 단원명·장·절 번호가 보이면 그대로 쓴다. 예: "공통수학 1 — Ⅱ. 방정식과 부등식 (1) 복소수, (2) 이차방정식".
+- units: 범위 안의 단원·소단원 이름 3~10개.
+- title: 이 범위를 한 줄로 부르는 이름 (25자 이내). 예: "공통수학 1 · 방정식과 부등식".
+- summary: 자료에서 확인한 시험 범위 요약 2~3문장(페이지·문제 번호가 보이면 포함).
+- 자료에 시험 범위가 명확히 없으면, 자료의 단원·주제를 근거로 가장 가까운 범위를 쓰고 note에 "자료에서 범위를 확정하지 못해 단원 기준으로 정리"라고 밝힌다.
+- 자료에 없는 내용을 지어내지 않는다.`;
+
+function normalizeScope(data, fallbackTitle) {
+  const units = (data && Array.isArray(data.units) ? data.units : []).map(u => String(u || '').trim()).filter(Boolean).slice(0, 12);
+  const scopeText = String((data && data.scopeText) || '').trim().slice(0, 900);
+  if (!scopeText) throw new Error('자료에서 시험 범위를 읽지 못했어요.');
+  return {
+    scopeText,
+    units,
+    title: String((data && data.title) || fallbackTitle || '').trim().slice(0, 60),
+    summary: String((data && data.summary) || '').trim().slice(0, 600),
+    note: String((data && data.note) || '').trim().slice(0, 200),
+  };
+}
+
+/**
+ * 자료(PDF 텍스트 · 필기 사진)를 읽어 시험 범위를 파악한다. throw 하지 않는다.
+ */
+export async function extractScope({ subjectLabel: label, learner, material, signal } = {}) {
+  const parts = [{ text: [
+    `과목: ${label || '과목'}`,
+    learner ? `학생: ${learner.country || '대한민국'} ${learner.level || ''} ${learner.grade || ''} ${learner.semester || '1학기'}`.trim() : '',
+    material ? `자료 이름: ${material.name || '자료'}` : '',
+    material && material.text ? `\n[자료 내용]\n${String(material.text).slice(0, 12000)}` : '',
+    material && material.dataUrl ? '\n[자료] 첨부한 필기·교재 사진을 읽고 시험 범위를 정리해 줘.' : '',
+  ].filter(Boolean).join('\n') }];
+  if (material && material.dataUrl) {
+    parts.push({ inline_data: { mime_type: material.mimeType || 'image/jpeg', data: String(material.dataUrl).split(',')[1] || '' } });
+  }
+  try {
+    const out = await generateJSON({ system: SCOPE_SYSTEM, parts, schema: SCOPE_SCHEMA, temperature: 0.25, maxTokens: 2000, signal });
+    return normalizeScope(out, label ? `${label} 시험 범위` : '시험 범위');
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    return { error: (e && e.message) || '자료에서 시험 범위를 읽지 못했어요.', scopeText: '', units: [], title: '', summary: '', note: '' };
+  }
+}
+
+const PATH_SYSTEM = `너는 듀오링고식 학습 경로를 설계하는 교사다. 학생의 과목·시험 범위·남은 날·목표·이해도·난이도 피드백을 보고, 개념 학습부터 문제 풀이까지 이어지는 레슨 경로를 만든다.
+
+규칙:
+- steps는 8~10개. 순서: 개념 이해(2개) → 암기 → 기본 문제 → 문제 풀이 → 응용·심화 → 실전 모의고사 → 오답/구술 정리.
+- kind는 다음 중 하나: 개념, 암기, 문제, 심화, 모의고사, 구술, 오디오, 실험.
+- title: 단원명이 드러나게 24자 이내. 앞에 번호를 붙이지 않는다(앱이 붙인다). 예: "이차방정식 근의 공식".
+- sub: 그 레슨에서 실제로 하는 일 24자 이내. 예: "근의 공식 유도와 적용".
+- 시험까지 남은 날이 7일 이하면 개념 수를 줄이고 문제·모의고사 비중을 늘린다. 21일 이상이면 개념을 충실히 나눈다.
+- 목표 50%는 핵심 주제만, 70%는 범위 전체, 90%는 심화·서술형까지 포함한다.
+- 이해도가 "기초"이면 첫 두 레슨을 아주 쉽게, "심화"이면 개념을 압축하고 문제 비중을 높인다.
+- 난이도 피드백이 "어려웠어요"면 쉬운 문제부터, "쉬웠어요"면 심화를 더 넣는다.
+- 모든 레슨은 주어진 시험 범위 안에서만 구성한다.`;
+
+function fallbackPath({ label, scopeText, units, days, goalPct }) {
+  const list = (units && units.length ? units : [scopeText || label || '시험 범위']).slice(0, 8);
+  const u = i => String(list[i % list.length] || label || '핵심 단원').trim();
+  const steps = [
+    { kind: '개념', title: `${u(0)} 개념 잡기`, sub: '큰 그림과 용어부터' },
+    { kind: '개념', title: `${u(1)} 원리 이해`, sub: '왜 그런지 설명하기' },
+    { kind: '암기', title: `${u(0)} 핵심 암기`, sub: '공식·용어 카드 8장' },
+    { kind: '문제', title: `${u(0)} 기본 문제`, sub: '5문항 · 즉시 채점' },
+    { kind: '문제', title: `${u(2)} 대표 유형`, sub: '교과서·기출 유형' },
+    { kind: '심화', title: `${u(3)} 응용 문제`, sub: '조건이 바뀐 문제' },
+    { kind: '실험', title: `${u(1)} 직접 만져 보기`, sub: '개념 시뮬레이션' },
+    { kind: '모의고사', title: '실전 모의고사', sub: '시간 제한 · 약점 분석' },
+    { kind: '구술', title: `${u(4)} 말로 설명하기`, sub: '구술 시험 3문항' },
+  ];
+  if (days != null && days >= 21 && goalPct >= 90) {
+    steps.splice(6, 0, { kind: '오디오', title: `${u(5)} 귀로 복습`, sub: '5분 오디오' });
+  }
+  return { title: scopeText ? String(scopeText).slice(0, 40) : `${label || '과목'} 시험 대비`, steps, source: 'basic' };
+}
+
+/**
+ * 시험 범위 + 사전 질문(남은 날·목표·이해도·학년·학기)으로 레슨 경로를 만든다. throw 하지 않는다.
+ */
+export async function buildLessonPath({
+  label, scopeText, units, days, goalPct, understanding, learner, difficulty, materials, signal,
+} = {}) {
+  const fallback = fallbackPath({ label, scopeText, units, days, goalPct });
+  if (!getKey()) return fallback;
+  const diff = difficulty && difficulty.label ? `난이도 피드백: ${difficulty.label}` : '난이도 피드백: 없음';
+  const user = [
+    `과목: ${label || '과목'}`,
+    `시험 범위: ${scopeText || '(자료의 단원 기준)'}`,
+    units && units.length ? `범위 단원: ${units.join(', ')}` : '',
+    `시험까지: ${days == null ? '미정' : days + '일'}`,
+    `목표: ${goalPct || 70}%`,
+    `이해도: ${understanding || '보통'}`,
+    diff,
+    learner ? `학생: ${learner.country || '대한민국'} ${learner.level || ''} ${learner.grade || ''} ${learner.semester || '1학기'}`.trim() : '',
+    (materials && materials.length) ? `참고 자료: ${materials.map(m => m.name).join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+  try {
+    const out = await generateJSON({ system: PATH_SYSTEM, parts: [{ text: user }], schema: PATH_SCHEMA, temperature: 0.5, maxTokens: 2400, signal });
+    const steps = (out && Array.isArray(out.steps) ? out.steps : [])
+      .map(s => ({
+        kind: LESSON_STEPS.includes(s && s.kind) ? s.kind : '개념',
+        title: String((s && s.title) || '').trim().slice(0, 40),
+        sub: String((s && s.sub) || '').trim().slice(0, 40),
+      }))
+      .filter(s => s.title)
+      .slice(0, 10);
+    if (steps.length < 3) throw new Error('레슨 경로를 충분히 만들지 못했어요.');
+    return { title: String((out.title || fallback.title)).trim().slice(0, 60), steps, note: String(out.note || '').slice(0, 200), source: 'ai' };
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
+    fallback.error = (e && e.message) || 'AI가 경로를 만들지 못했어요.';
+    return fallback;
+  }
+}
+
 export const ALL_SUBJECT_IDS = SUBJECTS.map(s => s.id);
 void learnerContextFrom;
+

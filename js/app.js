@@ -3,22 +3,24 @@
    ========================================================= */
 import {
   K, state, hasKey, save, $, $$, openModal, escapeHtml, toast, getSetup,
-} from './core.js?v=825eb38c';
+} from './core.js?v=0d35ef34';
 import {
   initTheme, initTabs, initSubject, initKey, showView, openMaterialsModal,
   renderMaterialCount, onView, renderKeyState,
-} from './ui.js?v=825eb38c';
-import { renderHeaderChips } from './gamify.js?v=825eb38c';
-import { initTutor } from './tutor.js?v=825eb38c';
-import { initQuiz } from './quiz.js?v=825eb38c';
-import { initPlan } from './plan.js?v=825eb38c';
-import { initCards } from './cards.js?v=825eb38c';
-import { initAudio } from './audio.js?v=825eb38c';
-import { initSim } from './sim.js?v=825eb38c';
-import { initLeague, handleFriendLink } from './league.js?v=825eb38c';
-import { initCourse, renderCourse } from './course.js?v=825eb38c';
-import { initSettings } from './settings.js?v=825eb38c';
-import { initOnboarding, openOnboarding } from './onboarding.js?v=825eb38c';
+} from './ui.js?v=0d35ef34';
+import { renderHeaderChips } from './gamify.js?v=0d35ef34';
+import { initTutor } from './tutor.js?v=0d35ef34';
+import { initQuiz } from './quiz.js?v=0d35ef34';
+import { initPlan } from './plan.js?v=0d35ef34';
+import { initCards } from './cards.js?v=0d35ef34';
+import { initAudio } from './audio.js?v=0d35ef34';
+import { initSim } from './sim.js?v=0d35ef34';
+import { initLeague, handleFriendLink } from './league.js?v=0d35ef34';
+import { initCourse, renderCourse } from './course.js?v=0d35ef34';
+import { initSettings } from './settings.js?v=0d35ef34';
+import { initOnboarding, openOnboarding } from './onboarding.js?v=0d35ef34';
+import { initDifficulty } from './difficulty.js?v=0d35ef34';
+import { initScope } from './scope.js?v=0d35ef34';
 
 /* ---------------- 개발용 오류 표시 (?debug=1) ---------------- */
 window.__errors = [];
@@ -62,6 +64,8 @@ function boot() {
   initCourse();
   initSettings();
   initOnboarding();
+  initDifficulty();
+  initScope();
 
   // 상단 XP 칩 → 랭킹, 스트릭 칩 → 랭킹
   document.getElementById('xpChip')?.addEventListener('click', () => showView('league'));
