@@ -5,12 +5,12 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid,
-} from './core.js?v=a59a745c';
-import { showView, openKeyModal } from './ui.js?v=a59a745c';
+} from './core.js?v=e392b533';
+import { showView, openKeyModal } from './ui.js?v=e392b533';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=a59a745c';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=a59a745c';
+} from './gamify.js?v=e392b533';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=e392b533';
 
 const el = (id) => document.getElementById(id);
 
@@ -496,7 +496,7 @@ export function initCourse() {
   el('startMore').addEventListener('click', openCourseInfo);
   el('chStart').addEventListener('click', () => { showView('quiz'); startDaily(); });
   el('keyBannerBtn').addEventListener('click', () => openKeyModal());
-  el('profileBtn').addEventListener('click', () => document.dispatchEvent(new CustomEvent('app:open-settings')));
+  el('profileBtn').addEventListener('click', () => showView('settings'));
 
   document.querySelectorAll('.sheet-back').forEach(back => {
     back.addEventListener('click', (e) => { if (e.target === back) closeSheets(); });

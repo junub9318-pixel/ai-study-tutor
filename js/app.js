@@ -3,22 +3,22 @@
    ========================================================= */
 import {
   K, state, hasKey, save, $, $$, openModal, escapeHtml, toast, getSetup,
-} from './core.js?v=a59a745c';
+} from './core.js?v=e392b533';
 import {
   initTheme, initTabs, initSubject, initKey, showView, openMaterialsModal,
   renderMaterialCount, onView, renderKeyState,
-} from './ui.js?v=a59a745c';
-import { renderHeaderChips } from './gamify.js?v=a59a745c';
-import { initTutor } from './tutor.js?v=a59a745c';
-import { initQuiz } from './quiz.js?v=a59a745c';
-import { initPlan } from './plan.js?v=a59a745c';
-import { initCards } from './cards.js?v=a59a745c';
-import { initAudio } from './audio.js?v=a59a745c';
-import { initSim } from './sim.js?v=a59a745c';
-import { initLeague, handleFriendLink } from './league.js?v=a59a745c';
-import { initCourse, renderCourse } from './course.js?v=a59a745c';
-import { initSettings } from './settings.js?v=a59a745c';
-import { initOnboarding, openOnboarding } from './onboarding.js?v=a59a745c';
+} from './ui.js?v=e392b533';
+import { renderHeaderChips } from './gamify.js?v=e392b533';
+import { initTutor } from './tutor.js?v=e392b533';
+import { initQuiz } from './quiz.js?v=e392b533';
+import { initPlan } from './plan.js?v=e392b533';
+import { initCards } from './cards.js?v=e392b533';
+import { initAudio } from './audio.js?v=e392b533';
+import { initSim } from './sim.js?v=e392b533';
+import { initLeague, handleFriendLink } from './league.js?v=e392b533';
+import { initCourse, renderCourse } from './course.js?v=e392b533';
+import { initSettings } from './settings.js?v=e392b533';
+import { initOnboarding, openOnboarding } from './onboarding.js?v=e392b533';
 
 /* ---------------- 개발용 오류 표시 (?debug=1) ---------------- */
 window.__errors = [];
