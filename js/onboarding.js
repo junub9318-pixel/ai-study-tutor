@@ -8,21 +8,21 @@ import {
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
   getProvider, getKeyFor, setKeyFor, clearKeyFor, canSearch, providerInfo,
-} from './core.js?v=ce8e2714';
-import { showView, openKeyModal, renderKeyState, providerPanelHtml, bindProviderPanel, providerName } from './ui.js?v=ce8e2714';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=ce8e2714';
+} from './core.js?v=751cbfcf';
+import { showView, openKeyModal, renderKeyState, providerPanelHtml, bindProviderPanel, providerName } from './ui.js?v=751cbfcf';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=751cbfcf';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName, QUOTA_NOTICE,
-} from './curriculum.js?v=ce8e2714';
+} from './curriculum.js?v=751cbfcf';
 import {
   CURRICULUM_OPTIONS, CUSTOM_CURRICULUM, curriculumOptions, recommendCurriculum, curriculumHint,
   normalizeTopics, bindUnitList, unitEditorHtml,
-} from './textbook.js?v=ce8e2714';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=ce8e2714';
+} from './textbook.js?v=751cbfcf';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=751cbfcf';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=ce8e2714';
+} from './routine.js?v=751cbfcf';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);

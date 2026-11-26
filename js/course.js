@@ -5,15 +5,15 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=ce8e2714';
-import { showView, openKeyModal } from './ui.js?v=ce8e2714';
-import { openDifficultyPrompt } from './difficulty.js?v=ce8e2714';
+} from './core.js?v=751cbfcf';
+import { showView, openKeyModal } from './ui.js?v=751cbfcf';
+import { openDifficultyPrompt } from './difficulty.js?v=751cbfcf';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=ce8e2714';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=ce8e2714';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=ce8e2714';
-import { getTextbook, normalizeTopics } from './textbook.js?v=ce8e2714';
+} from './gamify.js?v=751cbfcf';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=751cbfcf';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=751cbfcf';
+import { getTextbook, normalizeTopics } from './textbook.js?v=751cbfcf';
 
 const el = (id) => document.getElementById(id);
 

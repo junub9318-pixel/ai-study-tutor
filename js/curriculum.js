@@ -6,7 +6,7 @@
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, generateText, parseJSON,
   getKey, getSetup, fastModel, liteModel, canSearch,
-} from './core.js?v=ce8e2714'
+} from './core.js?v=751cbfcf'
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -609,7 +609,7 @@ export async function verifySchool(info = {}, { signal, timeoutMs = 22000, onPro
       ...base, schema: SCHOOL_SCHEMA, timeoutMs: Math.min(14000, timeoutMs),
       chain: plainChain(), attempts: 2, stopOnQuota: true,
     });
-    return normalizeSchool(out, info, { grounded: false, searchSkipped: true });
+    return normalizeSchool(out, info, { grounded: false, searchSkipped: canSearch() });
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
     if (isQuotaError(e)) coolDownQuota();
