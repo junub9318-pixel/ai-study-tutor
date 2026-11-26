@@ -3,9 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, generateText, currentSubject, uid, toast,
-} from './core.js?v=fa63af88';
-import { loading, setStatus, errorStatus, toastCopy } from './ui.js?v=fa63af88';
-import { awardXP, bump } from './gamify.js?v=fa63af88';
+} from './core.js?v=2ab59033';
+import { loading, setStatus, errorStatus, toastCopy } from './ui.js?v=2ab59033';
+import { awardXP, bump } from './gamify.js?v=2ab59033';
 
 const el = (id) => document.getElementById(id);
 let currentSim = 'quadratic';

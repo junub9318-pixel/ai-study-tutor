@@ -5,8 +5,8 @@ import {
   SUBJECTS, K, state, load, save, removeKey, currentSubject, setSubject,
   $, $$, el, escapeHtml, fmt, toast, openModal, hasKey, getKey, setKey, clearKey,
   connectTest, getModel, listModels, ApiError, saveSettings, saveMaterials, uid, dayKey,
-} from './core.js?v=fa63af88';
-import { renderHeaderChips } from './gamify.js?v=fa63af88';
+} from './core.js?v=2ab59033';
+import { renderHeaderChips } from './gamify.js?v=2ab59033';
 
 /* ---------------- theme ---------------- */
 export function initTheme() {
@@ -349,7 +349,12 @@ async function extractPdfText(file) {
   if (!lib) throw new Error('PDF 기능을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.');
   lib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
   const buf = await file.arrayBuffer();
-  const pdf = await lib.getDocument({ data: buf }).promise;
+  const pdf = await lib.getDocument({
+    data: buf,
+    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+    cMapPacked: true,
+    useSystemFonts: true,
+  }).promise;
   const pages = Math.min(pdf.numPages, 30);
   let out = '';
   for (let i = 1; i <= pages; i++) {
