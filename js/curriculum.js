@@ -5,7 +5,7 @@
    ========================================================= */
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup,
-} from './core.js?v=0b39a62c';
+} from './core.js?v=0f19bb7e';
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -568,7 +568,7 @@ function fallbackPath({ label, scopeText, units, days, goalPct, title }) {
     steps.splice(6, 0, { kind: '오디오', title: `${u(5)} 귀로 복습`, sub: '5분 오디오' });
   }
   const givenTitle = String(title || '').trim();
-  const isGenericTitle = !givenTitle || /시험 범위$/.test(givenTitle);
+  const isGenericTitle = !givenTitle || /시험 범위$/.test(givenTitle) || givenTitle.length > 34;
   const derived = list.length ? `${label || '과목'} · ${list[0]}`.slice(0, 40) : '';
   const fallbackTitle = (!isGenericTitle ? givenTitle : (derived || givenTitle || `${label || '과목'} 시험 대비`));
   return { title: fallbackTitle, steps, source: 'basic' };

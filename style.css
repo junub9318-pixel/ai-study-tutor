@@ -935,7 +935,7 @@ html[data-theme="light"]{ --bg-grad: radial-gradient(900px 480px at 12% -8%, #ee
 .folder-tab .tab-dot{ position:absolute; top:6px; left:50%; width:11px; height:5px; border-radius:99px; background: linear-gradient(90deg,#5b6bff,#a06bff); }
 
 .exam-body{ padding-top: 22px; }
-.exam-body h2{ font-size: 25px; font-weight: 900; letter-spacing: -.035em; line-height:1.28; }
+.exam-body h2{ font-size: 25px; font-weight: 900; letter-spacing: -.035em; line-height:1.28; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; word-break:keep-all; }
 .exam-pills{ display:flex; gap:8px; flex-wrap:wrap; margin-top: 14px; }
 .epill{
   display:inline-flex; align-items:center; gap:6px;

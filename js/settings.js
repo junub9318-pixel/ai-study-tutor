@@ -5,17 +5,17 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=0b39a62c';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=0b39a62c';
-import { openDifficultyPrompt } from './difficulty.js?v=0b39a62c';
-import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=0b39a62c';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=0b39a62c';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=0b39a62c';
+} from './core.js?v=0f19bb7e';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=0f19bb7e';
+import { openDifficultyPrompt } from './difficulty.js?v=0f19bb7e';
+import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=0f19bb7e';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=0f19bb7e';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=0f19bb7e';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=0b39a62c';
-import { openOnboarding } from './onboarding.js?v=0b39a62c';
+} from './sync.js?v=0f19bb7e';
+import { openOnboarding } from './onboarding.js?v=0f19bb7e';
 
 const el = (id) => document.getElementById(id);
 
@@ -420,7 +420,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=0b39a62c').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=0f19bb7e').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
