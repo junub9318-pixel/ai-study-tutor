@@ -5,7 +5,7 @@
    ========================================================= */
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup,
-} from './core.js?v=783d5ca2';
+} from './core.js?v=827d81c6';
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -536,14 +536,22 @@ const PATH_SYSTEM = `너는 듀오링고식 학습 경로를 설계하는 교사
 - 난이도 피드백이 "어려웠어요"면 쉬운 문제부터, "쉬웠어요"면 심화를 더 넣는다.
 - 모든 레슨은 주어진 시험 범위 안에서만 구성한다.`;
 
-function fallbackPath({ label, scopeText, units, days, goalPct }) {
+function deriveUnits(clean, units) {
+  if (units && units.length) return units.map(String);
+  const out = [];
+  (clean.match(/\d+\.\s*[^\d().]{2,26}/g) || []).forEach(m => out.push(m.replace(/^\d+\.\s*/, '').trim()));
+  (clean.match(/[ⅠⅡⅢⅣⅤⅥ]\.\s*[^\dⅠⅡⅢⅣⅤⅥ]{2,26}/g) || []).forEach(m => out.push(m.replace(/^[ⅠⅡⅢⅣⅤⅥ]\.\s*/, '').trim()));
+  const picked = out.filter(s => s && s.length <= 26);
+  if (picked.length) return picked.slice(0, 8);
+  const clauses = String(clean || '').split(/[.,·\n]/).map(s => s.trim()).filter(s => s.length >= 2 && s.length <= 26);
+  return clauses.slice(0, 8);
+}
+
+function fallbackPath({ label, scopeText, units, days, goalPct, title }) {
   const clean = String(scopeText || '').replace(/\s+/g, ' ').trim();
-  let list = (units && units.length ? units.map(String) : []).filter(Boolean);
-  if (!list.length && clean) {
-    list = clean.split(/[,;·\/]|\s{2,}/).map(s => s.trim()).filter(s => s && s.length <= 28);
-  }
-  if (!list.length) list = [label ? `${label} 핵심 단원` : '시험 범위'];
-  const short = list.map(s => (s.length > 18 ? s.slice(0, 18) + '…' : s));
+  const list = deriveUnits(clean, units);
+  const short = (list.length ? list : [label ? `${label} 핵심 단원` : '시험 범위'])
+    .map(s => (String(s).length > 20 ? String(s).slice(0, 20) + '…' : String(s)));
   const u = i => short[i % short.length];
   const steps = [
     { kind: '개념', title: `${u(0)} 개념 잡기`, sub: '큰 그림과 용어부터' },
@@ -559,16 +567,20 @@ function fallbackPath({ label, scopeText, units, days, goalPct }) {
   if (days != null && days >= 21 && goalPct >= 90) {
     steps.splice(6, 0, { kind: '오디오', title: `${u(5)} 귀로 복습`, sub: '5분 오디오' });
   }
-  return { title: clean ? clean.slice(0, 40) : `${label || '과목'} 시험 대비`, steps, source: 'basic' };
+  const givenTitle = String(title || '').trim();
+  const isGenericTitle = !givenTitle || /시험 범위$/.test(givenTitle);
+  const derived = list.length ? `${label || '과목'} · ${list[0]}`.slice(0, 40) : '';
+  const fallbackTitle = (!isGenericTitle ? givenTitle : (derived || givenTitle || `${label || '과목'} 시험 대비`));
+  return { title: fallbackTitle, steps, source: 'basic' };
 }
 
 /**
  * 시험 범위 + 사전 질문(남은 날·목표·이해도·학년·학기)으로 레슨 경로를 만든다. throw 하지 않는다.
  */
 export async function buildLessonPath({
-  label, scopeText, units, days, goalPct, understanding, learner, difficulty, materials, signal,
+  label, scopeText, units, days, goalPct, understanding, learner, difficulty, materials, signal, title,
 } = {}) {
-  const fallback = fallbackPath({ label, scopeText, units, days, goalPct });
+  const fallback = fallbackPath({ label, scopeText, units, days, goalPct, title });
   if (!getKey()) return fallback;
   const diff = difficulty && difficulty.label ? `난이도 피드백: ${difficulty.label}` : '난이도 피드백: 없음';
   const user = [

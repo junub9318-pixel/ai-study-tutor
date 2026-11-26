@@ -1,7 +1,7 @@
 /* =========================================================
    gamify.js — XP · 스트릭 · 리그 티어 · 배지 · 친구 랭킹
    ========================================================= */
-import { K, load, save, dayKey, shiftDay, weekStartKey, fmt, toast, state } from './core.js?v=783d5ca2';
+import { K, load, save, dayKey, shiftDay, weekStartKey, fmt, toast, state } from './core.js?v=827d81c6';
 
 export const TIERS = [
   { id: 'bronze',   name: '브론즈',     icon: '🥉', min: 0,    next: 100,  color: '#c98a5b' },

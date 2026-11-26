@@ -5,10 +5,10 @@
 import {
   state, load, getSetup, saveSetup, getScope, saveScope, getDifficulty, DIFFICULTY_LEVELS,
   escapeHtml, toast, openModal, uid, dayKey, dday, hasKey, saveMaterials,
-} from './core.js?v=783d5ca2';
-import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=783d5ca2';
-import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=783d5ca2';
-import { applyLessonPath, renderCourse } from './course.js?v=783d5ca2';
+} from './core.js?v=827d81c6';
+import { addMaterial, fileToMaterial, readImageFile, openMaterialsModal } from './ui.js?v=827d81c6';
+import { extractScope, buildLessonPath, subjectLabel, subjectIcon, gradesFor } from './curriculum.js?v=827d81c6';
+import { applyLessonPath, renderCourse } from './course.js?v=827d81c6';
 
 const el = (id) => document.getElementById(id);
 
@@ -30,7 +30,7 @@ function kindIcon(m) {
 }
 
 function srcLabel(src) {
-  return src === 'pdf' ? 'PDF' : src === 'photo' ? '필기 사진' : src === 'manual' ? '직접 입력' : src === 'note' ? '직접 입력' : '자료';
+  return src === 'pdf' ? 'PDF' : src === 'photo' ? '필기 사진' : src === 'txt' ? 'TXT' : src === 'manual' ? '직접 입력' : src === 'note' ? '직접 입력' : '자료';
 }
 
 /* ---------------- render ---------------- */
@@ -167,12 +167,12 @@ async function readScope(mat, key) {
   const res = await extractScope({ subjectLabel: label, learner: setup, material: mat });
   const units = res.units || [];
   let scopeText = res.scopeText || '';
-  let source = mat.kind === 'img' ? 'photo' : mat.kind === 'pdf' ? 'pdf' : 'note';
+  let source = mat.kind === 'img' ? 'photo' : mat.kind === 'pdf' ? 'pdf' : mat.kind === 'txt' ? 'txt' : 'note';
   if (!scopeText) {
     // 키가 없거나 읽지 못한 경우: 자료 이름과 앞부분으로 최소한의 범위를 만든다
-    const head = String(mat.text || '').replace(/\s+/g, ' ').slice(0, 160);
+    const head = String(mat.text || '').replace(/\s+/g, ' ').slice(0, 300);
     scopeText = head || String(mat.name || '').replace(/\.[a-z0-9]+$/i, '');
-    source = 'note';
+    if (!mat.text) source = 'note';
   }
   saveScope(key, {
     scopeText,
@@ -342,6 +342,7 @@ export function openScopeQuestions({ key = subjectKey(), scopeText = '', units =
         days: days >= 0 ? days : 0,
         goalPct: goal,
         understanding: under,
+        title,
         learner: Object.assign({}, setup, { grade: gradeV, semester: semesterV }),
         difficulty: diff ? { label: diff.label } : null,
         materials: mats,
