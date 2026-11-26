@@ -5,15 +5,15 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings,
-} from './core.js?v=6136f804';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=6136f804';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=6136f804';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses } from './course.js?v=6136f804';
+} from './core.js?v=71d6f1c5';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=71d6f1c5';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=71d6f1c5';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses } from './course.js?v=71d6f1c5';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=6136f804';
-import { openOnboarding } from './onboarding.js?v=6136f804';
+} from './sync.js?v=71d6f1c5';
+import { openOnboarding } from './onboarding.js?v=71d6f1c5';
 
 const el = (id) => document.getElementById(id);
 
@@ -82,7 +82,12 @@ export function renderSettings() {
         </label>
         <label class="field"><span>하루 학습 시간</span>
           <select id="setMinutes">
-            ${[20, 30, 45, 60, 90, 120, 180].map(m => `<option value="${m}" ${Number(setup.dailyMinutes) === m ? 'selected' : ''}>${m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '') : m + '분'}</option>`).join('')}
+            ${(() => {
+              const cur = Number(setup.dailyMinutes) || 60;
+              const opts = [20, 30, 45, 60, 90, 120, 180];
+              if (!opts.includes(cur)) opts.push(cur);
+              return opts.sort((a, b) => a - b).map(m => `<option value="${m}" ${cur === m ? 'selected' : ''}>${m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '') : m + '분'}</option>`).join('');
+            })()}
           </select>
         </label>
         <label class="field span2"><span>목표</span>
@@ -104,7 +109,7 @@ export function renderSettings() {
       <div class="panel-head tight"><b>내 과목</b><span class="week-label">${subjIds.length}개</span></div>
       <div class="onb-chips" id="setSubjChips">
         ${subjIds.map(id => {
-          const s = subjectById(id) || { label: id, icon: '✏️' };
+          const s = subjectById(id) || { label: id.replace(/^custom:/, ''), icon: '✏️' };
           const prog = courseProgress(id);
           return `<span class="onb-chip on" data-subchip="${escapeHtml(id)}">${s.icon} ${escapeHtml(s.label)} <b style="font-size:10px;color:var(--muted)">${prog.pct}%</b> <button class="chip-x" data-delsub="${escapeHtml(id)}" type="button" aria-label="삭제">✕</button></span>`;
         }).join('')}
@@ -153,6 +158,15 @@ export function renderSettings() {
       <div class="row tight" style="margin-top:8px">
         <button class="ghost-btn small" id="setExport" type="button">JSON 내보내기</button>
         <button class="ghost-btn small" id="setImport" type="button">JSON 불러오기</button>
+      </div>
+    </div>
+
+    <!-- 자료 -->
+    <div class="panel">
+      <div class="panel-head tight"><b>학습 자료</b><span class="week-label">${state.materials.length}개</span></div>
+      <p class="set-note" style="margin-top:0">PDF·TXT·필기 사진을 올려 두면 튜터·퀴즈·계획·카드·팟캐스트가 이 내용을 참고해요.</p>
+      <div class="row tight" style="margin-top:10px">
+        <button class="ghost-btn small" id="setMaterials" type="button">자료 관리 · 추가</button>
       </div>
     </div>
 
@@ -277,6 +291,9 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
 
+  host.querySelector('#setMaterials')?.addEventListener('click', () => {
+    import('./ui.js?v=71d6f1c5').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+  });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
     const box = host.querySelector('#setKeyStatus');
