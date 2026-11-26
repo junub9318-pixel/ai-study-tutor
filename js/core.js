@@ -43,6 +43,8 @@ export const K = {
   friends: 'aitutor.v1.friends',
   settings: 'aitutor.v1.settings',
   daily: 'aitutor.v1.daily',
+  setup: 'aitutor.v1.setup',
+  courses: 'aitutor.v1.courses',
 };
 
 /* ---------------- storage ---------------- */
@@ -74,8 +76,7 @@ export const state = {
 export function saveSettings() { save(K.settings, state.settings); }
 export function saveMaterials() { save(K.materials, state.materials); }
 
-export function subjectById(id) {
-  return SUBJECTS.find(s => s.id === id) || null;
+export function subjectById(id) {  return SUBJECTS.find(s => s.id === id) || null;
 }
 export function currentSubject() {
   if (state.subject === 'custom') {
@@ -93,6 +94,40 @@ export function setSubject(id, customLabel) {
   save(K.subject, state.subject);
   save(K.custom, state.customLabel);
   document.dispatchEvent(new CustomEvent('app:subject'));
+}
+
+/* ---------------- learner profile (온보딩) ---------------- */
+export function getSetup() {
+  return load(K.setup, null);
+}
+export function saveSetup(patch) {
+  const next = Object.assign({}, getSetup() || {}, patch || {});
+  save(K.setup, next);
+  document.dispatchEvent(new CustomEvent('app:setup'));
+  return next;
+}
+export function learnerLabel() {
+  const s = getSetup() || {};
+  if (!s.level && !s.grade) return '고등학생';
+  return `${s.country || '대한민국'} ${s.level || ''} ${s.grade || ''}`.trim();
+}
+export function learnerContext() {
+  const s = getSetup();
+  if (!s) return '[학생 정보] 대한민국 고등학교 1학년. 한국 교육과정 기준으로 설명한다.';
+  const dd = s.examDate ? dday(s.examDate) : null;
+  const lines = [
+    `[학생 정보]`,
+    `- 국가·교육과정: ${s.country || '대한민국'}`,
+    `- 학교급·학년: ${s.level || ''} ${s.grade || ''}`.trim(),
+    s.school ? `- 학교: ${s.school}` : '',
+    s.schoolNote ? `- 학교 교육과정 메모: ${s.schoolNote}` : '',
+    `- 스스로 평가한 수준: ${s.levelSelf || '보통'}`,
+    s.examDate ? `- 시험: ${s.examDate} (${dd != null ? 'D-' + Math.max(0, dd) : '예정'}), 목표: ${s.goalPct || 70}%` : `- 시험: 미정, 목표: ${s.goalPct || 70}%`,
+    `- 하루 학습 가능 시간: ${s.dailyMinutes || 60}분`,
+    '',
+    `이 학생의 국가·학교급·학년 교육과정에 맞는 단원 범위와 설명 수준으로 답한다. 시험 범위가 있으면 그 범위를 우선한다.`,
+  ];
+  return lines.filter(Boolean).join('\n');
 }
 
 /* ---------------- dom utils ---------------- */
@@ -615,9 +650,11 @@ export async function streamChat({ system, contents, temperature = 0.75, maxToke
 
 /* ---------------- prompt builders ---------------- */
 export function tutorSystem(subject, mode) {
-  const head = `너는 한국 고등학교 1학년 학생(${subject})을 1:1로 가르치는 ${subject} 과목 전문 튜터다.
-학생은 시험 대비와 학교 수업 이해를 위해 너를 찾았다. 설명은 한국어로 하고, 중학생 수준의 배경지식만 있어도 이해할 수 있게 쉬운 말로 쓴다.
-수식은 반드시 LaTeX로 쓴다: 인라인은 $...$, 블록은 $$...$$. 마크다운(**강조**, 목록, 표, 코드블록)을 쓸 수 있다.`;
+  const head = `너는 ${learnerLabel()} 학생(${subject})을 1:1로 가르치는 ${subject} 과목 전문 튜터다.
+학생은 시험 대비와 학교 수업 이해를 위해 너를 찾았다. 설명은 한국어로 하고, 학생의 학교급에 맞는 배경지식만 있다고 가정하고 쉬운 말로 쓴다.
+수식은 반드시 LaTeX로 쓴다: 인라인은 $...$, 블록은 $$...$$. 마크다운(**강조**, 목록, 표, 코드블록)을 쓸 수 있다.
+
+${learnerContext()}`;
   if (mode === 'summary') {
     return `${head}
 

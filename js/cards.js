@@ -3,10 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, renderRich, generateJSON, CARDS_SCHEMA,
-  currentSubject, materialContext, uid, toast,
-} from './core.js?v=0e819e16';
-import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=0e819e16';
-import { awardXP, bump } from './gamify.js?v=0e819e16';
+  currentSubject, materialContext, uid, toast, learnerContext,} from './core.js?v=00671424';
+import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=00671424';
+import { awardXP, bump } from './gamify.js?v=00671424';
 
 const STATUS = {
   unknown: { label: '모르겠음', icon: '❓', cls: 's0', xp: 2 },
@@ -44,7 +43,7 @@ async function generateDeck() {
 주제/단원: ${topic || '(자료 참고)'}
 카드 수: ${count}
 ${materialContext(selectedMaterials(matSel))}`;
-    const data = await generateJSON({ system, parts: [{ text: user }], schema: CARDS_SCHEMA, temperature: 0.55, maxTokens: 8192 });
+    const data = await generateJSON({ system: system + '\n\n' + learnerContext(), parts: [{ text: user }], schema: CARDS_SCHEMA, temperature: 0.55, maxTokens: 8192 });
     const cards = (data.cards || []).slice(0, count).map(c => ({
       id: uid('c'),
       front: String(c.front || '').trim(),
@@ -175,6 +174,7 @@ function setCardStatus(card, status) {
   }
   awardXP(STATUS[status].xp, '카드 복습');
   bump('cards');
+  document.dispatchEvent(new CustomEvent('app:studied', { detail: { type: 'cards' } }));
   flipped = false;
   const nextNew = deck.cards.findIndex((c, i) => i > index && c.status === 'new');
   if (nextNew >= 0) { index = nextNew; renderCard(); }

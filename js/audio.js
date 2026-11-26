@@ -4,13 +4,12 @@
 import {
   K, state, load, save, $, escapeHtml, renderRich, toSpeech, generateJSON, openModal,
   PODCAST_SCHEMA, ORAL_Q_SCHEMA, ORAL_GRADE_SCHEMA, currentSubject, materialContext,
-  uid, toast, dayKey,
-} from './core.js?v=0e819e16';
+  uid, toast, dayKey, learnerContext,} from './core.js?v=00671424';
 import {
   loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials,
   speak, stopSpeaking, listen, sttSupported, ttsSupported, koVoice,
-} from './ui.js?v=0e819e16';
-import { awardXP, awardBulk, bump } from './gamify.js?v=0e819e16';
+} from './ui.js?v=00671424';
+import { awardXP, awardBulk, bump } from './gamify.js?v=00671424';
 
 const el = (id) => document.getElementById(id);
 let podMatSel = new Set();
@@ -55,7 +54,7 @@ async function generatePodcast() {
 길이: 약 ${length}분
 난이도: ${level}
 ${materialContext(selectedMaterials(podMatSel))}`;
-    const data = await generateJSON({ system, parts: [{ text: user }], schema: PODCAST_SCHEMA, temperature: 0.75, maxTokens: 8192 });
+    const data = await generateJSON({ system: system + '\n\n' + learnerContext(), parts: [{ text: user }], schema: PODCAST_SCHEMA, temperature: 0.75, maxTokens: 8192 });
     const lines = (data.lines || []).map(l => ({
       speaker: speakerLabel(l.speaker),
       text: String(l.text || '').trim(),
@@ -76,6 +75,7 @@ ${materialContext(selectedMaterials(podMatSel))}`;
     setStatus(status, null);
     awardXP(10, '팟캐스트 생성');
     bump('podcasts');
+    document.dispatchEvent(new CustomEvent('app:studied', { detail: { type: 'podcast' } }));
     loadPlayer(deckItem, true);
     renderPodLibrary();
   } catch (e) {
@@ -262,7 +262,7 @@ async function startOral() {
 문항 수: ${count}
 난이도: ${level}
 ${materialContext(selectedMaterials(oralMatSel))}`;
-    const data = await generateJSON({ system, parts: [{ text: user }], schema: ORAL_Q_SCHEMA, temperature: 0.7, maxTokens: 4096 });
+    const data = await generateJSON({ system: system + '\n\n' + learnerContext(), parts: [{ text: user }], schema: ORAL_Q_SCHEMA, temperature: 0.7, maxTokens: 4096 });
     const questions = (data.questions || []).map(q => ({
       prompt: String(q.prompt || '').trim(),
       keyPoints: Array.isArray(q.keyPoints) ? q.keyPoints.map(String) : [],
@@ -457,6 +457,7 @@ function finishOral() {
   save(K.oral, hist.slice(0, 12));
   awardBulk(25, '구술 시험 완료');
   bump('oral');
+  document.dispatchEvent(new CustomEvent('app:studied', { detail: { type: 'oral' } }));
   el('oralRunner').innerHTML = `
     <div class="panel" style="margin-top:14px">
       <div class="result-score">

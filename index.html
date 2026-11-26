@@ -3,116 +3,115 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0d1120" />
+<meta name="theme-color" content="#000000" />
 <title>AI 스터디 튜터 · 전 과목 1:1 학습</title>
 <meta name="description" content="국어·영어·수학·사회·과학·한국사·인공지능기초를 단계별로 가르쳐 주는 1:1 AI 튜터. 내 Gemini API 키로 브라우저에서 바로 쓰고, 모든 학습 기록은 이 기기에만 저장됩니다." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-<link rel="stylesheet" href="style.css?v=0e819e16" />
+<link rel="stylesheet" href="style.css?v=00671424" />
 </head>
 <body>
 
 <div class="app" id="app">
+
+  <!-- ============ TOP BAR (Duolingo style) ============ -->
   <header class="topbar">
-    <button class="brand" id="brandHome" type="button">
-      <span class="logo">🎓</span>
-      <span class="brand-text"><b>AI 스터디 튜터</b><small>전 과목 1:1 학습</small></span>
+    <button class="prof-btn" id="profileBtn" type="button" aria-label="프로필 · 설정">
+      <span id="profEmoji">🐣</span>
+      <span class="key-dot" id="keyDot"></span>
     </button>
-    <div class="top-right">
-      <button class="chip xp-chip" id="xpChip" type="button" title="리그 보기">
-        <span id="streakChip">🔥 0</span>
-        <span class="vline"></span>
-        <span id="xpChipText">⚡ 0 XP</span>
+    <button class="subbar" id="subjectBtn" type="button" aria-haspopup="dialog">
+      <span class="subbar-ico" id="subjectIcon">📐</span>
+      <span class="subbar-main">
+        <b id="subjectLabel">수학</b>
+        <span class="subbar-track"><i id="subjectBarFill" style="width:0%"></i></span>
+      </span>
+      <span class="subbar-caret">▾</span>
+    </button>
+    <div class="tb-stats">
+      <button class="tb-stat" id="streakChipBtn" type="button" title="연속 학습">
+        <span class="tb-ico">🔥</span><b id="streakChip">0</b>
       </button>
-      <button class="chip key-chip" id="keyBtn" type="button" title="Gemini API 키">
-        <span class="key-dot" id="keyDot"></span><span id="keyLabel">API 키</span>
+      <button class="tb-stat" id="xpChip" type="button" title="XP · 리그">
+        <span class="tb-ico">⚡</span><b id="xpChipText">0</b>
+        <span class="tb-tier" id="tbTier">🥉</span>
       </button>
-      <button class="icon-btn" id="themeBtn" type="button" aria-label="테마 전환" title="테마 전환">🌙</button>
     </div>
   </header>
 
-  <div class="subject-bar">
-    <button class="chip subject-chip" id="subjectBtn" type="button" aria-haspopup="dialog">
-      <span id="subjectIcon">📖</span><span id="subjectLabel">국어</span><span class="caret">▾</span>
-    </button>
-    <span class="subject-hint" id="subjectHint">문학 · 독서 · 문법</span>
-    <button class="chip ghost mat-chip" id="materialsBtn" type="button">📎 자료 <b id="matCount">0</b></button>
-  </div>
-
-  <div class="key-banner" id="keyBanner" hidden>
-    <div>
-      <b>무료 Gemini API 키를 연결하면 바로 시작할 수 있어요</b>
-      <span>키는 이 브라우저에만 저장되고, 서버로 보내지 않습니다.</span>
-    </div>
-    <button class="primary small" id="keyBannerBtn" type="button">3단계로 연결하기</button>
-  </div>
-
-  <nav class="tabs" id="tabs" role="tablist">
-    <button class="tab active" data-view="home" role="tab" aria-selected="true">🏠<span>홈</span></button>
-    <button class="tab" data-view="tutor" role="tab" aria-selected="false">💬<span>튜터</span></button>
-    <button class="tab" data-view="quiz" role="tab" aria-selected="false">📝<span>퀴즈</span></button>
-    <button class="tab" data-view="plan" role="tab" aria-selected="false">🗓️<span>계획</span></button>
-    <button class="tab" data-view="cards" role="tab" aria-selected="false">🃏<span>카드</span></button>
-    <button class="tab" data-view="audio" role="tab" aria-selected="false">🎧<span>오디오</span></button>
-    <button class="tab" data-view="lab" role="tab" aria-selected="false">🔬<span>실험실</span></button>
-    <button class="tab" data-view="league" role="tab" aria-selected="false">🏆<span>리그</span></button>
-  </nav>
-
   <main class="main" id="main">
 
-    <!-- ================= HOME ================= -->
-    <section class="view active" data-view="home">
-      <div class="hero">
-        <div class="hero-text">
-          <p class="eyebrow" id="homeDate">11월 26일 목요일</p>
-          <h1 id="homeGreeting">오늘도 한 걸음</h1>
-          <p class="sub" id="homeSub">목표까지 50 XP 남았어요.</p>
-        </div>
-        <div class="goal-ring" id="goalRing" aria-label="오늘 목표 진행률">
-          <svg viewBox="0 0 64 64" aria-hidden="true">
-            <circle class="ring-bg" cx="32" cy="32" r="27"></circle>
-            <circle class="ring-fg" id="ringFg" cx="32" cy="32" r="27"></circle>
-          </svg>
-          <div class="ring-label"><b id="ringPct">0%</b><small>오늘 목표</small></div>
+    <!-- ================= COURSE (시험 · 학습 경로) ================= -->
+    <section class="view active" data-view="course">
+      <div class="exam-head">
+        <h1>시험</h1>
+        <div class="exam-actions">
+          <button class="round-btn" id="examSearch" type="button" aria-label="검색">🔍</button>
+          <button class="round-btn" id="examStats" type="button" aria-label="통계">📊</button>
         </div>
       </div>
 
-      <div class="stat-row">
-        <div class="stat-card"><span class="s-ico">🔥</span><div><b id="statStreak">0일</b><small>연속 학습</small></div></div>
-        <div class="stat-card"><span class="s-ico">⚡</span><div><b id="statXP">0 XP</b><small>이번 주</small></div></div>
-        <div class="stat-card"><span class="s-ico">🏅</span><div><b id="statTier">브론즈</b><small id="statTierSub">주간 리그</small></div></div>
+      <div class="key-banner" id="keyBanner" hidden>
+        <div>
+          <b>Gemini API 키를 연결하면 AI 수업이 시작돼요</b>
+          <span>키는 이 브라우저에만 저장되고 서버로 보내지 않습니다.</span>
+        </div>
+        <button class="primary small" id="keyBannerBtn" type="button">3단계로 연결</button>
       </div>
 
-      <div class="grid-2">
-        <div class="panel challenge-card">
-          <div class="panel-head tight">
-            <div class="ch-head"><span class="ch-ico">🎯</span><div><b>오늘의 두뇌 챌린지</b><small id="chSub">3문제 · +20 XP</small></div></div>
+      <div class="exam-card">
+        <div class="folder-tab">
+          <div class="tab-ring" id="courseRing">
+            <svg viewBox="0 0 44 44" aria-hidden="true">
+              <circle class="tr-bg" cx="22" cy="22" r="18"></circle>
+              <circle class="tr-fg" id="courseRingFg" cx="22" cy="22" r="18"></circle>
+            </svg>
+            <b id="coursePct">0%</b>
           </div>
-          <p class="ch-desc" id="chDesc">과목별 3문제로 하루를 깨워 보세요.</p>
-          <button class="primary block" id="chStart" type="button">도전하기</button>
+          <span id="courseSubject">수학</span>
+          <i class="tab-dot"></i>
         </div>
-        <div class="panel league-mini">
-          <div class="panel-head tight"><b>이번 주 리그</b><button class="link-btn" data-goto="league" type="button">전체 보기 ›</button></div>
-          <ol class="mini-rank" id="miniRank"></ol>
+
+        <div class="exam-body">
+          <h2 id="courseTitle">나의 학습 코스</h2>
+          <div class="exam-pills">
+            <span class="epill" id="courseDday">시험 날짜 미정</span>
+            <span class="epill"><i class="pill-dot"></i> 목표까지 <b id="courseGoalLeft">100%</b></span>
+          </div>
+
+          <div class="lesson-path" id="lessonPath"></div>
+
+          <div class="start-row">
+            <button class="start-btn" id="startNext" type="button">다음 수업 시작하기</button>
+            <button class="start-more" id="startMore" type="button" aria-label="수업 목록">›</button>
+          </div>
+          <p class="lesson-hint" id="lessonHint">오늘의 한 걸음만 해도 충분해요.</p>
         </div>
       </div>
 
-      <h2 class="sect-title">바로 시작하기</h2>
-      <div class="quick-grid" id="quickGrid">
-        <button class="quick" data-goto="tutor" type="button"><span class="q-ico">💬</span><b>1:1 튜터</b><small>단계별로 물어보기</small></button>
-        <button class="quick" data-goto="quiz" type="button"><span class="q-ico">📝</span><b>퀴즈·모의고사</b><small>실전처럼 풀기</small></button>
-        <button class="quick" data-goto="audio" type="button"><span class="q-ico">🎧</span><b>복습 팟캐스트</b><small>귀로 듣는 복습</small></button>
-        <button class="quick" data-goto="audio" data-audio="oral" type="button"><span class="q-ico">🎤</span><b>구술 시험</b><small>말로 설명하는 연습</small></button>
-        <button class="quick" data-goto="lab" type="button"><span class="q-ico">🔬</span><b>실험실</b><small>개념을 직접 만지기</small></button>
-        <button class="quick" data-goto="cards" type="button"><span class="q-ico">🃏</span><b>플래시카드</b><small>암기 카드 복습</small></button>
+      <div class="tool-row" id="toolRow">
+        <button class="tool-chip" data-goto="plan" type="button"><span>🗓️</span>시험 계획</button>
+        <button class="tool-chip" data-goto="lab" type="button"><span>🔬</span>실험실</button>
+        <button class="tool-chip" data-goto="audio" data-audio="oral" type="button"><span>🎤</span>구술 시험</button>
+        <button class="tool-chip" data-goto="audio" type="button"><span>🎧</span>팟캐스트</button>
+        <button class="tool-chip" data-goto="league" type="button"><span>🏆</span>리그</button>
       </div>
 
-      <div class="panel badge-preview">
-        <div class="panel-head tight"><b>배지</b><button class="link-btn" data-goto="league" type="button">전체 보기 ›</button></div>
-        <div class="badge-row" id="badgePreview"></div>
+      <div class="today-strip">
+        <div class="ts-main">
+          <div class="ts-label">오늘의 목표</div>
+          <div class="ts-track"><i id="todayFill" style="width:0%"></i></div>
+          <div class="ts-sub" id="todaySub">0 / 50 XP</div>
+        </div>
+        <button class="ts-challenge" id="chStart" type="button">
+          <span>🎯</span>
+          <div><b>두뇌 챌린지</b><small id="chSub">3문제 · +20 XP</small></div>
+        </button>
       </div>
+
+      <p class="exam-foot">학습 기록은 이 기기에만 저장됩니다. 프로필 버튼에서 API 키·Google 동기화를 관리할 수 있어요.</p>
     </section>
 
     <!-- ================= TUTOR ================= -->
@@ -399,16 +398,6 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><b>내 프로필</b></div>
-        <div class="profile-row">
-          <button class="emoji-pick" id="emojiPick" type="button" title="아바타 바꾸기">🐣</button>
-          <input id="nickInput" placeholder="닉네임 (친구 랭킹에 표시)" maxlength="12" />
-          <button class="ghost-btn small" id="saveProfile" type="button">저장</button>
-        </div>
-        <div class="emoji-list" id="emojiList" hidden></div>
-      </div>
-
-      <div class="panel">
         <div class="panel-head"><b>배지</b><span class="week-label" id="badgeCount"></span></div>
         <div class="badge-grid" id="badgeGrid"></div>
       </div>
@@ -416,19 +405,59 @@
       <div class="panel">
         <div class="panel-head"><b>학습 통계</b></div>
         <div class="stat-grid" id="statGrid"></div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head"><b>데이터</b></div>
-        <p class="sub">모든 기록은 이 브라우저의 localStorage에만 저장됩니다. 키를 지우거나 기기를 바꾸면 사라져요.</p>
-        <div class="row tight">
+        <div class="row tight" style="margin-top:12px">
           <button class="ghost-btn small" id="exportBtn" type="button">기록 내보내기 (JSON)</button>
           <button class="ghost-btn small danger" id="resetBtn" type="button">모든 기록 초기화</button>
         </div>
       </div>
     </section>
 
+    <!-- ================= SETTINGS ================= -->
+    <section class="view" data-view="settings" hidden>
+      <div class="exam-head"><h1>설정</h1><div class="exam-actions"><button class="round-btn" id="settingsHomeBtn" type="button" aria-label="홈으로">🏠</button></div></div>
+      <div id="settingsBody"></div>
+    </section>
+
   </main>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <nav class="bottomnav" id="bottomNav">
+    <button class="bn-item active" data-view="course" type="button"><span>🏠</span><b>홈</b></button>
+    <button class="bn-item" data-view="league" type="button"><span>🏆</span><b>랭킹</b></button>
+    <button class="bn-item" data-view="settings" type="button"><span>⚙️</span><b>설정</b></button>
+  </nav>
+</div>
+
+<!-- ============ SUBJECT SHEET ============ -->
+<div class="sheet-back" id="subjectSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <b id="sheetTitle">과목 선택</b>
+      <button class="icon-btn" data-sheets-close type="button" aria-label="닫기">✕</button>
+    </div>
+    <div class="courses-row" id="coursesRow"></div>
+    <div class="course-card" id="courseProgressCard"></div>
+    <div class="sheet-sect">신규 과정</div>
+    <div class="courses-row" id="newCoursesRow"></div>
+    <p class="fine">과목을 추가하면 상단 과목 바와 학습 경로에 함께 등록돼요.</p>
+  </div>
+</div>
+
+<!-- ============ ONBOARDING ============ -->
+<div class="onb" id="onboarding" hidden>
+  <div class="onb-inner">
+    <div class="onb-top">
+      <button class="onb-back" id="onbBack" type="button" aria-label="이전">←</button>
+      <div class="onb-progress"><i id="onbFill" style="width:0%"></i></div>
+      <span class="onb-step" id="onbStep">1 / 7</span>
+    </div>
+    <div class="onb-body" id="onbBody"></div>
+    <div class="onb-foot">
+      <button class="primary onb-next" id="onbNext" type="button">다음</button>
+      <button class="onb-skip" id="onbSkip" type="button">나중에 하기</button>
+    </div>
+  </div>
 </div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
@@ -439,6 +468,6 @@
 
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-<script type="module" src="js/app.js?v=0e819e16"></script>
+<script type="module" src="js/app.js?v=00671424"></script>
 </body>
 </html>

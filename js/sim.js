@@ -2,10 +2,9 @@
    sim.js — 인터랙티브 개념 시뮬레이션 (내장 + AI 생성)
    ========================================================= */
 import {
-  K, state, load, save, $, escapeHtml, generateText, currentSubject, uid, toast,
-} from './core.js?v=0e819e16';
-import { loading, setStatus, errorStatus, toastCopy } from './ui.js?v=0e819e16';
-import { awardXP, bump } from './gamify.js?v=0e819e16';
+  K, state, load, save, $, escapeHtml, generateText, currentSubject, uid, toast, learnerContext,} from './core.js?v=00671424';
+import { loading, setStatus, errorStatus, toastCopy } from './ui.js?v=00671424';
+import { awardXP, bump } from './gamify.js?v=00671424';
 
 const el = (id) => document.getElementById(id);
 let currentSim = 'quadratic';
@@ -416,6 +415,7 @@ function awardSimOnce() {
   awarded.add(key);
   awardXP(3, '실험실 탐구');
   bump('sims');
+  document.dispatchEvent(new CustomEvent('app:studied', { detail: { type: 'sim' } }));
 }
 function dayKeyLocal() { return new Date().toISOString().slice(0, 10); }
 
@@ -453,7 +453,7 @@ async function generateSim() {
 - 과목: ${subject.label}. 학생은 고등학생이다. 개념을 정확히 반영한다.
 - 다크 배경과 밝은 글자로 통일해도 되고, 흰 배경이어도 된다. 대비만 확보한다.`;
     const text = await generateText({
-      system,
+      system: system + '\n\n' + learnerContext(),
       parts: [{ text: `만들 시뮬레이션: ${prompt}\n\n위 개념을 직접 조작하며 이해할 수 있는 인터랙티브 HTML을 출력해.` }],
       temperature: 0.65,
       maxTokens: 8192,

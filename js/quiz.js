@@ -3,10 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, renderRich, generateJSON, QUIZ_SCHEMA,
-  currentSubject, materialContext, uid, toast, dayKey, dateLabel,
-} from './core.js?v=0e819e16';
-import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=0e819e16';
-import { awardXP, awardBulk, bump } from './gamify.js?v=0e819e16';
+  currentSubject, materialContext, uid, toast, dayKey, dateLabel, learnerContext,} from './core.js?v=00671424';
+import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=00671424';
+import { awardXP, awardBulk, bump } from './gamify.js?v=00671424';
 
 let active = null;      // 진행 중인 퀴즈
 let timerId = null;
@@ -39,7 +38,7 @@ async function makeQuestions({ subject, scope, count, type, level, mode: qmode, 
 ${materialContext(materials)}`;
 
   const data = await generateJSON({
-    system,
+    system: system + '\n\n' + learnerContext(),
     parts: [{ text: user }],
     schema: QUIZ_SCHEMA,
     temperature: qmode === 'exam' ? 0.65 : 0.55,
@@ -318,6 +317,7 @@ function submitQuiz(auto = false) {
   }
 
   active.finished = true;
+  document.dispatchEvent(new CustomEvent('app:studied', { detail: { type: active.exam ? 'exam' : 'quiz' } }));
   showResult(record, auto);
   document.dispatchEvent(new CustomEvent('app:quizdone'));
 }

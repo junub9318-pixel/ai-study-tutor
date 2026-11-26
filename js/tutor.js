@@ -4,12 +4,12 @@
 import {
   K, state, load, save, $, escapeHtml, renderRich, toSpeech, streamChat, tutorSystem,
   currentSubject, subjectKey, hasKey, openModal, toast, uid, materialContext, ApiError,
-} from './core.js?v=0e819e16';
+} from './core.js?v=00671424';
 import {
   speak, stopSpeaking, listen, sttSupported, ttsSupported, readImageFile, fileToMaterial,
-  openMaterialsModal, scrollToBottom, toastCopy, setStatus, onView,
-} from './ui.js?v=0e819e16';
-import { awardXP, bump, profile } from './gamify.js?v=0e819e16';
+  openMaterialsModal, scrollToBottom, toastCopy, setStatus, onView, openKeyModal,
+} from './ui.js?v=00671424';
+import { awardXP, bump, profile } from './gamify.js?v=00671424';
 
 let chats = load(K.chats, {});
 let controller = null;
@@ -204,7 +204,7 @@ function openAttachMaterialPicker() {
         try {
           const mat = await fileToMaterial(f);
           if (mat && mat.kind !== 'img') {
-            const { addMaterial } = await import('./ui.js?v=0e819e16');
+            const { addMaterial } = await import('./ui.js?v=00671424');
             addMaterial(mat);
             selected.add(mat.id);
           }
@@ -253,7 +253,7 @@ function buildContents(history, parts) {
 
 async function sendMessage(text, images, materials, { silentUser = false } = {}) {
   if (state.busy) return;
-  if (!hasKey()) { toast('먼저 Gemini API 키를 연결해 주세요.', 'err'); document.getElementById('keyBtn').click(); return; }
+  if (!hasKey()) { toast('먼저 Gemini API 키를 연결해 주세요.', 'err'); openKeyModal(); return; }
   const question = (text || '').trim();
   if (!question && !images.length) { toast('질문을 입력하거나 사진을 첨부해 주세요.', 'err'); return; }
 
@@ -329,6 +329,7 @@ async function sendMessage(text, images, materials, { silentUser = false } = {})
 
     awardXP(mode === 'summary' ? 3 : 5, mode === 'summary' ? '핵심 정리' : '튜터링');
     bump('turns');
+    document.dispatchEvent(new CustomEvent('app:studied', { detail: { type: 'tutor' } }));
 
     if (state.settings.autoSpeak) speak(toSpeech(aiMsg.text), { rate: state.settings.ttsRate || 1 });
   } catch (e) {
@@ -502,7 +503,7 @@ export function initTutor() {
     for (const f of Array.from(e.target.files || [])) {
       try {
         const mat = await fileToMaterial(f);
-        if (mat) { const { addMaterial } = await import('./ui.js?v=0e819e16'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
+        if (mat) { const { addMaterial } = await import('./ui.js?v=00671424'); addMaterial(mat); state.pending.materials.push(mat); renderPending(); }
       } catch (err) { toast(err.message, 'err'); }
     }
     e.target.value = '';

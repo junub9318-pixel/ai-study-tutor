@@ -3,10 +3,9 @@
    ========================================================= */
 import {
   K, state, load, save, $, escapeHtml, renderRich, generateJSON, PLAN_SCHEMA,
-  currentSubject, materialContext, uid, toast, dayKey, dday, dateLabel, shiftDay,
-} from './core.js?v=0e819e16';
-import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=0e819e16';
-import { awardXP, bump } from './gamify.js?v=0e819e16';
+  currentSubject, materialContext, uid, toast, dayKey, dday, dateLabel, shiftDay, learnerContext,} from './core.js?v=00671424';
+import { loading, setStatus, errorStatus, renderMaterialPicker, selectedMaterials } from './ui.js?v=00671424';
+import { awardXP, bump } from './gamify.js?v=00671424';
 
 let matSel = new Set();
 const el = (id) => document.getElementById(id);
@@ -54,7 +53,7 @@ async function generatePlan() {
 ${materialContext(selectedMaterials(matSel))}`;
 
     const data = await generateJSON({
-      system, parts: [{ text: user }], schema: PLAN_SCHEMA, temperature: 0.55, maxTokens: 8192,
+      system: system + '\n\n' + learnerContext(), parts: [{ text: user }], schema: PLAN_SCHEMA, temperature: 0.55, maxTokens: 8192,
     });
 
     const today = dayKey();
@@ -205,7 +204,7 @@ function renderPlans() {
       if (pctLabel) pctLabel.textContent = pct + '%';
       const count = card.querySelector('.row.tight small');
       if (count) count.textContent = `진행 ${done} / ${plan.tasks.length}`;
-      if (task.done && !wasDone) { awardXP(5, '학습 체크'); bump('tasksDone'); }
+      if (task.done && !wasDone) { awardXP(5, '학습 체크'); bump('tasksDone'); document.dispatchEvent(new CustomEvent('app:studied', { detail: { type: 'plan' } })); }
     });
   });
 }

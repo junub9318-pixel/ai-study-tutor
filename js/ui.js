@@ -5,29 +5,19 @@ import {
   SUBJECTS, K, state, load, save, removeKey, currentSubject, setSubject,
   $, $$, el, escapeHtml, fmt, toast, openModal, hasKey, getKey, setKey, clearKey,
   connectTest, getModel, listModels, ApiError, saveSettings, saveMaterials, uid, dayKey,
-} from './core.js?v=0e819e16';
-import { renderHeaderChips } from './gamify.js?v=0e819e16';
+} from './core.js?v=00671424';
+import { renderHeaderChips } from './gamify.js?v=00671424';
 
 /* ---------------- theme ---------------- */
 export function initTheme() {
-  const saved = load(K.theme, null) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  const saved = load(K.theme, null) || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
   updateThemeIcon(saved);
-  $('#themeBtn').addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme');
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    save(K.theme, next);
-    updateThemeIcon(next);
-    document.dispatchEvent(new CustomEvent('app:theme', { detail: next }));
-  });
+  document.addEventListener('app:theme', (e) => updateThemeIcon(e.detail));
 }
 function updateThemeIcon(theme) {
-  const b = $('#themeBtn');
-  if (!b) return;
-  b.textContent = theme === 'dark' ? '☀️' : '🌙';
-  const meta = $('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#0d1120' : '#f6f4ef');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#f6f4ef');
 }
 
 /* ---------------- views ---------------- */
@@ -39,10 +29,11 @@ export function showView(name) {
     v.hidden = !on;
     v.classList.toggle('active', on);
   });
-  $$('.tab').forEach(t => {
-    const on = t.dataset.view === name;
+  const primary = name === 'league' ? 'league' : name === 'settings' ? 'settings' : 'course';
+  $$('.bn-item').forEach(t => {
+    const on = t.dataset.view === primary;
     t.classList.toggle('active', on);
-    t.setAttribute('aria-selected', on ? 'true' : 'false');
+    t.setAttribute('aria-current', on ? 'page' : 'false');
   });
   const view = $(`.view[data-view="${name}"]`);
   if (view) view.scrollTop = 0;
@@ -56,12 +47,17 @@ export function currentView() {
 }
 
 export function initTabs() {
-  $('#tabs').addEventListener('click', (e) => {
-    const tab = e.target.closest('.tab');
-    if (!tab) return;
-    showView(tab.dataset.view);
-  });
+  const nav = document.getElementById('bottomNav');
+  if (nav) {
+    nav.addEventListener('click', (e) => {
+      const b = e.target.closest('.bn-item');
+      if (!b) return;
+      showView(b.dataset.view);
+    });
+  }
   $$('[data-goto]').forEach(btn => {
+    if (btn.dataset.gotoBound) return;
+    btn.dataset.gotoBound = '1';
     btn.addEventListener('click', () => {
       showView(btn.dataset.goto);
       if (btn.dataset.audio) {
@@ -69,17 +65,24 @@ export function initTabs() {
       }
     });
   });
-  $('#brandHome').addEventListener('click', () => showView('home'));
-  $('#xpChip').addEventListener('click', () => showView('league'));
+  document.addEventListener('app:view', () => {
+    $$('[data-goto]').forEach(btn => {
+      if (btn.dataset.gotoBound) return;
+      btn.dataset.gotoBound = '1';
+      btn.addEventListener('click', () => {
+        showView(btn.dataset.goto);
+        if (btn.dataset.audio) document.dispatchEvent(new CustomEvent('app:audio-pane', { detail: btn.dataset.audio }));
+      });
+    });
+  });
 }
 
 /* ---------------- subject ---------------- */
 export function renderSubjectUI() {
   const s = currentSubject();
-  const icon = $('#subjectIcon'), label = $('#subjectLabel'), hint = $('#subjectHint');
+  const icon = $('#subjectIcon'), label = $('#subjectLabel');
   if (icon) icon.textContent = s.icon;
   if (label) label.textContent = s.label;
-  if (hint) hint.textContent = s.hint || '직접 입력한 과목';
   document.querySelectorAll('[data-subject-name]').forEach(n => { n.textContent = s.label; });
 }
 
@@ -121,16 +124,14 @@ export function openSubjectPicker() {
 
 export function initSubject() {
   renderSubjectUI();
-  $('#subjectBtn').addEventListener('click', openSubjectPicker);
   document.addEventListener('app:subject', renderSubjectUI);
 }
 
 /* ---------------- API key ---------------- */
 export function renderKeyState() {
   const ok = hasKey();
-  const dot = $('#keyDot'), label = $('#keyLabel'), banner = $('#keyBanner');
-  if (dot) dot.parentElement.classList.toggle('ok', ok);
-  if (label) label.textContent = ok ? (getModel() ? getModel().replace('gemini-', '') : '연결됨') : 'API 키';
+  const dot = $('#keyDot'), banner = $('#keyBanner');
+  if (dot) dot.classList.toggle('ok', ok);
   if (banner) banner.hidden = ok;
   document.dispatchEvent(new CustomEvent('app:key', { detail: ok }));
 }
@@ -209,8 +210,11 @@ export function openKeyModal() {
 
 export function initKey() {
   renderKeyState();
-  $('#keyBtn').addEventListener('click', openKeyModal);
-  $('#keyBannerBtn').addEventListener('click', openKeyModal);
+}
+
+export function initMaterialsButton() {
+  const b = document.getElementById('materialsBtn');
+  if (b) b.addEventListener('click', () => openMaterialsModal(() => renderMaterialCount()));
 }
 
 /* ---------------- materials ---------------- */

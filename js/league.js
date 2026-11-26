@@ -4,13 +4,13 @@
 import {
   K, state, load, save, $, escapeHtml, fmt, toast, openModal, dayKey, weekStartKey,
   currentSubject, removeKey as _rk,
-} from './core.js?v=0e819e16';
+} from './core.js?v=00671424';
 import {
   TIERS, tierFor, weeklyXP, totalXP, currentStreak, bestStreak, profile, leaderboard,
   friends, removeFriend, addFriendByCode, myCode, myLink, BADGES, isBadgeOn,
   unlockedBadges, emit,
-} from './gamify.js?v=0e819e16';
-import { toastCopy } from './ui.js?v=0e819e16';
+} from './gamify.js?v=00671424';
+import { toastCopy } from './ui.js?v=00671424';
 
 const el = (id) => document.getElementById(id);
 const EMOJIS = ['🐣', '🐼', '🦊', '🐧', '🐯', '🦉', '🐨', '🦄', '🚀', '📚', '🎧', '🧠', '⭐', '🍀', '🎓', '🔥'];
@@ -49,8 +49,8 @@ export function renderLeague() {
   renderFriends();
   renderBadges();
   renderStats();
-  el('nickInput').value = p.nick || '';
-  el('emojiPick').textContent = p.emoji || '🐣';
+  const nickEl = el('nickInput'); if (nickEl) nickEl.value = p.nick || '';
+  const emojiEl = el('emojiPick'); if (emojiEl) emojiEl.textContent = p.emoji || '🐣';
   el('myCode').textContent = myCode();
 }
 
@@ -179,14 +179,14 @@ export function initLeague() {
   el('friendCodeInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addFriend(); });
   el('copyCode').addEventListener('click', () => toastCopy(myCode(), '친구 코드를 복사했어요'));
   el('copyLink').addEventListener('click', () => toastCopy(myLink(), '친구 링크를 복사했어요'));
-  el('saveProfile').addEventListener('click', () => {
+  el('saveProfile')?.addEventListener('click', () => {
     const p = profile();
     p.nick = el('nickInput').value.trim().slice(0, 12);
     save(K.profile, p);
     emit();
     toast(p.nick ? `닉네임을 "${p.nick}"으로 저장했어요` : '닉네임을 지웠어요');
   });
-  el('emojiPick').addEventListener('click', () => {
+  el('emojiPick')?.addEventListener('click', () => {
     const list = el('emojiList');
     list.hidden = !list.hidden;
     if (!list.innerHTML) {
@@ -201,8 +201,8 @@ export function initLeague() {
       }));
     }
   });
-  el('exportBtn').addEventListener('click', exportData);
-  el('resetBtn').addEventListener('click', resetAll);
+  el('exportBtn')?.addEventListener('click', exportData);
+  el('resetBtn')?.addEventListener('click', resetAll);
 
   document.addEventListener('gamify:update', () => {
     if (document.querySelector('.view[data-view="league"]') && !document.querySelector('.view[data-view="league"]').hidden) renderLeague();

@@ -2,21 +2,23 @@
    app.js — 앱 초기화
    ========================================================= */
 import {
-  K, state, hasKey, save, $, $$, openModal, escapeHtml, toast,
-} from './core.js?v=0e819e16';
+  K, state, hasKey, save, $, $$, openModal, escapeHtml, toast, getSetup,
+} from './core.js?v=00671424';
 import {
   initTheme, initTabs, initSubject, initKey, showView, openMaterialsModal,
-  renderMaterialCount, onView,
-} from './ui.js?v=0e819e16';
-import { renderHeaderChips } from './gamify.js?v=0e819e16';
-import { initHome } from './home.js?v=0e819e16';
-import { initTutor } from './tutor.js?v=0e819e16';
-import { initQuiz } from './quiz.js?v=0e819e16';
-import { initPlan } from './plan.js?v=0e819e16';
-import { initCards } from './cards.js?v=0e819e16';
-import { initAudio } from './audio.js?v=0e819e16';
-import { initSim } from './sim.js?v=0e819e16';
-import { initLeague, handleFriendLink } from './league.js?v=0e819e16';
+  renderMaterialCount, onView, renderKeyState,
+} from './ui.js?v=00671424';
+import { renderHeaderChips } from './gamify.js?v=00671424';
+import { initTutor } from './tutor.js?v=00671424';
+import { initQuiz } from './quiz.js?v=00671424';
+import { initPlan } from './plan.js?v=00671424';
+import { initCards } from './cards.js?v=00671424';
+import { initAudio } from './audio.js?v=00671424';
+import { initSim } from './sim.js?v=00671424';
+import { initLeague, handleFriendLink } from './league.js?v=00671424';
+import { initCourse, renderCourse } from './course.js?v=00671424';
+import { initSettings } from './settings.js?v=00671424';
+import { initOnboarding, openOnboarding } from './onboarding.js?v=00671424';
 
 /* ---------------- 개발용 오류 표시 (?debug=1) ---------------- */
 window.__errors = [];
@@ -37,7 +39,7 @@ window.addEventListener('unhandledrejection', (e) => reportError('promise: ' + (
 
 /* ---------------- boot ---------------- */
 function boot() {
-  if (window.pdfjsLib && window['pdfjs-dist/build/pdf.worker.min.js'] === undefined) {
+  if (window.pdfjsLib) {
     try {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     } catch (e) {}
@@ -50,9 +52,6 @@ function boot() {
   renderMaterialCount();
   renderHeaderChips();
 
-  document.getElementById('materialsBtn').addEventListener('click', () => openMaterialsModal(() => renderMaterialCount()));
-
-  initHome();
   initTutor();
   initQuiz();
   initPlan();
@@ -60,25 +59,32 @@ function boot() {
   initAudio();
   initSim();
   initLeague();
+  initCourse();
+  initSettings();
+  initOnboarding();
+
+  // 상단 XP 칩 → 랭킹, 스트릭 칩 → 랭킹
+  document.getElementById('xpChip')?.addEventListener('click', () => showView('league'));
+  document.getElementById('streakChipBtn')?.addEventListener('click', () => showView('league'));
 
   document.addEventListener('app:materials', renderMaterialCount);
-  document.addEventListener('app:key', () => {
-    const banner = document.getElementById('keyBanner');
-    if (banner) banner.hidden = hasKey();
-  });
+  document.addEventListener('app:key', renderKeyState);
+  document.addEventListener('app:setup', () => { renderCourse(); });
 
-  showView('home');
+  const started = openOnboarding(false);
+  if (!started) {
+    showView('course');
+    renderCourse();
+  }
   handleFriendLink();
 
-  // 카드·계획·퀴즈의 자료 칩은 화면을 열 때 다시 그리기
   onView('quiz', () => document.dispatchEvent(new CustomEvent('app:materials')));
   onView('plan', () => document.dispatchEvent(new CustomEvent('app:materials')));
   onView('cards', () => document.dispatchEvent(new CustomEvent('app:materials')));
   onView('audio', () => document.dispatchEvent(new CustomEvent('app:materials')));
-
-  // 테마 변경 시 캔버스 다시 그리기 등
-  document.addEventListener('app:theme', () => {});
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
 else boot();
+
+void state; void $; void $$; void openModal; void escapeHtml; void toast; void getSetup; void K; void save; void hasKey; void openMaterialsModal;
