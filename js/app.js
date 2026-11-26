@@ -3,20 +3,20 @@
    ========================================================= */
 import {
   K, state, hasKey, save, $, $$, openModal, escapeHtml, toast,
-} from './core.js';
+} from './core.js?v=422ee01a';
 import {
   initTheme, initTabs, initSubject, initKey, showView, openMaterialsModal,
   renderMaterialCount, onView,
-} from './ui.js';
-import { renderHeaderChips } from './gamify.js';
-import { initHome } from './home.js';
-import { initTutor } from './tutor.js';
-import { initQuiz } from './quiz.js';
-import { initPlan } from './plan.js';
-import { initCards } from './cards.js';
-import { initAudio } from './audio.js';
-import { initSim } from './sim.js';
-import { initLeague, handleFriendLink } from './league.js';
+} from './ui.js?v=422ee01a';
+import { renderHeaderChips } from './gamify.js?v=422ee01a';
+import { initHome } from './home.js?v=422ee01a';
+import { initTutor } from './tutor.js?v=422ee01a';
+import { initQuiz } from './quiz.js?v=422ee01a';
+import { initPlan } from './plan.js?v=422ee01a';
+import { initCards } from './cards.js?v=422ee01a';
+import { initAudio } from './audio.js?v=422ee01a';
+import { initSim } from './sim.js?v=422ee01a';
+import { initLeague, handleFriendLink } from './league.js?v=422ee01a';
 
 /* ---------------- 개발용 오류 표시 (?debug=1) ---------------- */
 window.__errors = [];
