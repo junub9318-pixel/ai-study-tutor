@@ -5,7 +5,7 @@
    ========================================================= */
 import {
   SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup, fastModel,
-} from './core.js?v=e7de7f04';
+} from './core.js?v=9e9b8848';
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -372,17 +372,7 @@ export function basicSchoolInfo(info = {}) {
   };
 }
 
-const SCHOOL_SYSTEM = `너는 각국 학교 교육과정에 정통한 학습 설계자다. 학생이 입력한 국가·학교급·학년·나이·학기·학교명을 보고 ① 학교를 확인하고 ② 그 학년·학기의 교육과정을 미리 파악해 요약한다.
-
-규칙:
-- 학교명이 실제 학교로 확인되면 found=true, region(지역)·schoolType(설립 구분)을 채운다. 확인되지 않으면 found=false로 두고 입력한 이름을 그대로 schoolName에 쓰며 일반 교육과정으로 요약한다. 없는 학교 정보를 지어내지 않는다.
-- curriculumName: 그 나라의 실제 교육과정 이름 (대한민국이면 예: "2022 개정 교육과정 · 고등학교 1학년"). 40자 이내.
-- summary: 이 학교·학년·학기의 교육과정을 3~4문장으로 요약. 어떤 과목을 배우고, 무엇이 공통·선택인지, 내신·평가 방식의 특징을 학생이 바로 이해할 수 있게.
-- semesterFocus: 이번 학기의 중점(예: "1학기 — 공통수학 1(다항식~이차함수), 통합과학 1~3단원"). 60자 이내.
-- subjects: 이 학년·학기에 실제로 배우는 과목 5~10개. name은 실제 교과명(예: "공통수학 1", "통합과학", "한국사"), kind는 "공통"·"선택"·"전공" 중 하나.
-- 확실하지 않은 내용은 일반적인 편성으로 채우고, 그렇게 채운 사실을 note에 밝힌다.`;
-
-/* 빠른 확인용 — 같은 내용을 더 짧게 요구해 1~3초 안에 끝나게 한다 */
+/* 학교 확인용 — 검색 grounding 없이 짧은 프롬프트로 1~3초 안에 끝나게 한다 */
 const SCHOOL_SYSTEM_FAST = `너는 각국 학교 교육과정에 정통한 학습 설계자다. 입력된 국가·학교급·학년·나이·학기·학교명으로 그 학기 교육과정을 짧게 요약한다. 아는 것만 쓰고 지어내지 않는다.
 - found: 학교명이 실제 학교로 확인되면 true, 아니면 false.
 - curriculumName 40자 이내 · summary 3문장 이내 · semesterFocus 50자 이내 · note 한 줄.

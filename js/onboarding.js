@@ -7,17 +7,17 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=e7de7f04';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=e7de7f04';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=e7de7f04';
+} from './core.js?v=9e9b8848';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=9e9b8848';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=9e9b8848';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=e7de7f04';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=e7de7f04';
+} from './curriculum.js?v=9e9b8848';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=9e9b8848';
 import {
   createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
-} from './routine.js?v=e7de7f04';
+} from './routine.js?v=9e9b8848';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
@@ -451,11 +451,6 @@ function stepRoutine() {
       });
     },
   };
-}
-
-function learnerSummary() {
-  const dd = draft.examDate ? dday(draft.examDate) : null;
-  return `국가: ${draft.country}\n학교급: ${draft.level} ${draft.grade} (만 ${draft.age}세)\n학기: ${draft.semester}\n학교: ${draft.school || '(미입력)'}\n현재 수준: ${draft.levelSelf}\n시험: ${draft.examDate || '미정'}${dd != null ? ` (D-${dd})` : ''}\n목표: ${draft.goalPct}%`;
 }
 
 /* ---------------- step 5 · 과목 확인 (학년·학기 기준 AI 리스트) ---------------- */
