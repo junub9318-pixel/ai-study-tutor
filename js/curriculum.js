@@ -4,8 +4,8 @@
    · 키가 없거나 오프라인일 때는 기본 교육과정 안내
    ========================================================= */
 import {
-  SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup,
-} from './core.js?v=0e3447ca';
+  SUBJECTS, subjectById, learnerContextFrom, generateJSON, getKey, getSetup, fastModel,
+} from './core.js?v=fcf2dd51';
 
 export const CUR_SCHEMA = {
   type: 'object',
@@ -382,6 +382,12 @@ const SCHOOL_SYSTEM = `너는 각국 학교 교육과정에 정통한 학습 설
 - subjects: 이 학년·학기에 실제로 배우는 과목 5~10개. name은 실제 교과명(예: "공통수학 1", "통합과학", "한국사"), kind는 "공통"·"선택"·"전공" 중 하나.
 - 확실하지 않은 내용은 일반적인 편성으로 채우고, 그렇게 채운 사실을 note에 밝힌다.`;
 
+/* 빠른 확인용 — 같은 내용을 더 짧게 요구해 1~3초 안에 끝나게 한다 */
+const SCHOOL_SYSTEM_FAST = `너는 각국 학교 교육과정에 정통한 학습 설계자다. 입력된 국가·학교급·학년·나이·학기·학교명으로 그 학기 교육과정을 짧게 요약한다. 아는 것만 쓰고 지어내지 않는다.
+- found: 학교명이 실제 학교로 확인되면 true, 아니면 false.
+- curriculumName 40자 이내 · summary 3문장 이내 · semesterFocus 50자 이내 · note 한 줄.
+- subjects: 5~10개, name은 실제 교과명, kind는 "공통"·"선택"·"전공".`;
+
 function normalizeSchool(data, info) {
   const base = basicSchoolInfo(info);
   const subjects = (data && Array.isArray(data.subjects) ? data.subjects : [])
@@ -409,9 +415,11 @@ function normalizeSchool(data, info) {
 
 /**
  * 학교·학년·학기 확인 + 교육과정 선파악. 절대 throw 하지 않는다.
+ * 검색 grounding·모델 탐색 없이 이미 고른 Flash 모델을 바로 호출하고,
+ * 8초 안에 답이 없으면 즉시 규칙 기반 기본 교육과정으로 넘긴다.
  * @returns {Promise<object>} {found, schoolName, region, curriculumName, summary, semesterFocus, subjects, source, error?}
  */
-export async function verifySchool(info = {}, { signal } = {}) {
+export async function verifySchool(info = {}, { signal, timeoutMs = 8000 } = {}) {
   if (!getKey()) return basicSchoolInfo(info);
   const user = [
     `국가: ${info.country || '대한민국'}`,
@@ -421,20 +429,22 @@ export async function verifySchool(info = {}, { signal } = {}) {
     `학교명: ${info.school || '(모름)'}`,
     info.schoolNote ? `학교 메모: ${info.schoolNote}` : '',
   ].filter(Boolean).join('\n');
-  const base = { system: SCHOOL_SYSTEM, parts: [{ text: user }], schema: SCHOOL_SCHEMA, temperature: 0.3, maxTokens: 1600, signal };
+  const base = {
+    system: SCHOOL_SYSTEM_FAST, parts: [{ text: user }], schema: SCHOOL_SCHEMA,
+    temperature: 0.3, maxTokens: 800, signal, timeoutMs, fast: true, model: fastModel(),
+  };
   try {
-    let out;
-    try {
-      out = await generateJSON({ ...base, tools: [{ google_search: {} }] });
-    } catch (e) {
-      if (e && e.name === 'AbortError') throw e;
-      out = await generateJSON(base);
-    }
+    const out = await generateJSON(base);
     return normalizeSchool(out, info);
   } catch (e) {
     if (e && e.name === 'AbortError') throw e;
     const b = basicSchoolInfo(info);
-    b.error = (e && e.message) || 'AI가 학교를 확인하지 못했어요.';
+    b.fastFallback = true;
+    b.summary = String(b.summary).replace(/\s*AI 키를 연결하면[^.]*?\.\s*$/, '').trim();
+    b.note = '빠른 표시를 위해 기본 교육과정으로 먼저 채웠어요.';
+    b.error = (e && e.code === 'timeout')
+      ? '8초 안에 AI 응답이 오지 않아 기본 교육과정으로 먼저 보여 드렸어요. “학교 확인”을 다시 누르면 새로 시도해요.'
+      : ((e && e.message) || 'AI가 학교를 확인하지 못했어요.');
     return b;
   }
 }

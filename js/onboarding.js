@@ -7,14 +7,17 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   currentSubject, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=0e3447ca';
-import { showView, openKeyModal, renderKeyState } from './ui.js?v=0e3447ca';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=0e3447ca';
+} from './core.js?v=fcf2dd51';
+import { showView, openKeyModal, renderKeyState } from './ui.js?v=fcf2dd51';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum, courseId } from './course.js?v=fcf2dd51';
 import {
   buildCurriculum, basicCurriculum, subjectLabel, subjectIcon,
   verifySchool, ageForGrade, gradesFor, subjectIdFromName,
-} from './curriculum.js?v=0e3447ca';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=0e3447ca';
+} from './curriculum.js?v=fcf2dd51';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=fcf2dd51';
+import {
+  createTimerWheel, recommendRoutine, minutesLabel, clampMinutes,
+} from './routine.js?v=fcf2dd51';
 
 const el = (id) => document.getElementById(id);
 const el$ = (sel, root = document) => root.querySelector(sel);
@@ -392,68 +395,58 @@ function stepLevel() {
 
 /* ---------------- step 4 · routine ---------------- */
 function stepRoutine() {
-  const presets = [20, 30, 45, 60, 90, 120];
   return {
     html: () => `
       <p class="onb-eyebrow">STEP 4 · 하루 루틴</p>
       <h2 class="onb-title">하루에 얼마나<br/>할 수 있나요?</h2>
-      <p class="onb-desc">무리하면 이틀도 못 가요. 매일 지킬 수 있는 시간을 고르면 AI가 그 안에 맞춰 수업을 나눠요.</p>
+      <p class="onb-desc">무리하면 이틀도 못 가요. 매일 지킬 수 있는 시간을 고르면 AI가 그 안에 맞춰 수업을 나눠요.<br/>30분 단위로 <b>최대 12시간</b>까지 정할 수 있어요.</p>
       <div class="onb-field"><label>하루 학습 시간</label>
-        <div class="onb-chips" id="onbMinutes">
-          ${presets.map(m => `<button class="onb-chip ${Number(draft.dailyMinutes) === m ? 'on' : ''}" data-min="${m}" type="button">${m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '') : m + '분'}</button>`).join('')}
-        </div>
+        <div class="tw-onb" id="onbMinutesWheel"></div>
       </div>
       <div class="row tight" style="margin-top:14px">
         <button class="ghost-btn" id="onbAiRec" type="button">✨ AI 추천 받기</button>
       </div>
       <div class="onb-preview" id="onbRecBox" hidden></div>`,
     bind: (body) => {
-      el$('#onbMinutes', body).addEventListener('click', (e) => {
-        const b = e.target.closest('[data-min]');
-        if (!b) return;
-        draft.dailyMinutes = Number(b.dataset.min);
-        body.querySelectorAll('[data-min]').forEach(x => x.classList.toggle('on', x === b));
-      });
       const box = el$('#onbRecBox', body);
-      el$('#onbAiRec', body).addEventListener('click', async (ev) => {
-        const btn = ev.currentTarget;
-        btn.disabled = true;
+      const btn = el$('#onbAiRec', body);
+      const wheel = createTimerWheel(el$('#onbMinutesWheel', body), {
+        value: draft.dailyMinutes,
+        onChange: (v) => { draft.dailyMinutes = v; },
+      });
+
+      btn.addEventListener('click', async () => {
+        // ① 시험 D-day·목표·수준·과목 수로 바로 계산해 즉시 보여 주고, 휠을 부드럽게 옮긴다
+        const rec = recommendRoutine({
+          examDate: draft.examDate,
+          goalPct: draft.goalPct,
+          levelSelf: draft.levelSelf,
+          subjectCount: draft.subjects.length,
+        });
+        draft.dailyMinutes = rec.minutes;
+        draft.aiReason = rec.reason;
+        if (wheel) wheel.setValue(rec.minutes, { animate: true });
         box.hidden = false;
-        box.innerHTML = '<span class="spinner"></span> 시험일·목표·수준을 보고 루틴을 짜는 중…';
+        box.innerHTML = `<b>추천: 하루 ${minutesLabel(rec.minutes)}</b><br/>${escapeHtml(rec.routine)}<br/><span class="rec-why">${escapeHtml(rec.reason)}</span>${hasKey() ? '<span class="rec-ai" id="onbRecAi"><span class="spinner tiny"></span> AI 코멘트…</span>' : ''}`;
+        toast(`하루 ${minutesLabel(rec.minutes)} 루틴을 추천했어요`, 'xp');
+        if (!hasKey()) return;
+
+        // ② 짧은 코멘트 한 줄만 초경량으로 덧붙인다 (실패·시간 초과는 조용히 넘어감)
+        const slot = el$('#onbRecAi', box);
         try {
-          let minutes, routine;
-          if (hasKey()) {
-            const system = `너는 학습 코치다. 학생의 시험일·목표·현재 수준·과목 수를 보고 "하루에 실제로 지킬 수 있는" 학습 시간(분)과 루틴을 추천한다.
-- minutes는 15~180 사이 5분 단위 정수. 남은 날이 적고 목표가 높을수록 늘리되, 하루 180분을 넘기지 않는다.
-- routine은 한 문장으로: 어떤 순서로 무엇을 할지 (예: 개념 20분 → 문제 20분 → 오답 10분).
-- reason은 왜 이 시간인지 한 문장.`;
-            const user = `${learnerSummary()}\n과목 수: ${draft.subjects.length}`;
-            const data = await generateJSON({
-              system, parts: [{ text: user }],
-              schema: { type: 'object', properties: { minutes: { type: 'integer' }, routine: { type: 'string' }, reason: { type: 'string' } }, required: ['minutes', 'routine'] },
-              temperature: 0.4, maxTokens: 512,
-            });
-            minutes = Math.max(15, Math.min(180, Number(data.minutes) || 60));
-            routine = String(data.routine || '').trim();
-            draft.aiReason = String(data.reason || '').trim();
-          } else {
-            const dd = draft.examDate ? Math.max(1, dday(draft.examDate)) : 21;
-            const base = draft.goalPct >= 90 ? 90 : draft.goalPct >= 70 ? 70 : 50;
-            const urgency = dd <= 7 ? 30 : dd <= 14 ? 20 : 0;
-            const lvl = draft.levelSelf === '기초' ? 10 : draft.levelSelf === '심화' ? 15 : 0;
-            minutes = Math.min(150, base + urgency + lvl);
-            routine = `개념 ${Math.round(minutes * 0.4)}분 → 문제 ${Math.round(minutes * 0.4)}분 → 오답·암기 ${Math.round(minutes * 0.2)}분`;
-            draft.aiReason = hasKey() ? '' : 'AI 키를 연결하지 않아 기본 규칙으로 계산했어요.';
+          const data = await generateJSON({
+            system: '너는 학습 코치다. 아래 학습 조건과 권장 시간을 보고, 왜 이 시간이 지킬 만한지 한 문장으로 조언한다. 40자 이내, 존댓말, 이모지 없이.',
+            parts: [{ text: `${rec.reason}\n권장: 하루 ${minutesLabel(rec.minutes)} (${rec.routine})` }],
+            schema: { type: 'object', properties: { comment: { type: 'string' } }, required: ['comment'] },
+            temperature: 0.4, maxTokens: 200, timeoutMs: 8000, fast: true,
+          });
+          if (slot) {
+            const comment = String((data && data.comment) || '').trim();
+            if (comment) slot.textContent = comment;
+            else slot.remove();
           }
-          draft.dailyMinutes = minutes;
-          body.querySelectorAll('[data-min]').forEach(x => x.classList.toggle('on', Number(x.dataset.min) === minutes));
-          box.hidden = false;
-          box.innerHTML = `<b>추천: 하루 ${minutes}분</b><br/>${escapeHtml(routine)}${draft.aiReason ? `<br/><span style="color:var(--muted);font-size:11.5px">${escapeHtml(draft.aiReason)}</span>` : ''}`;
-          toast(`하루 ${minutes}분 루틴을 추천했어요`, 'xp');
         } catch (e) {
-          box.innerHTML = '❌ ' + escapeHtml(e.message || '추천을 받지 못했어요.');
-        } finally {
-          btn.disabled = false;
+          if (slot) slot.remove();
         }
       });
     },
@@ -673,7 +666,7 @@ function stepSync() {
         <div><span>학년 · 학기</span><b>${escapeHtml(draft.level)} ${escapeHtml(draft.grade)} · ${escapeHtml(draft.semester)}${draft.age ? ` (만 ${draft.age}세)` : ''}</b></div>
         <div><span>과목</span><b>${draft.subjects.length}개 · ${draft.subjects.slice(0, 4).map(id => escapeHtml(subjectNameOf(id))).join(', ')}${draft.subjects.length > 4 ? ' 외' : ''}</b></div>
         <div><span>시험</span><b>${draft.examDate ? `${escapeHtml(draft.examDate)} (D-${Math.max(0, dday(draft.examDate))})` : '미정'}</b></div>
-        <div><span>목표 · 하루 시간</span><b>${draft.goalPct}% · ${draft.dailyMinutes}분</b></div>
+        <div><span>목표 · 하루 시간</span><b>${draft.goalPct}% · ${minutesLabel(draft.dailyMinutes)}</b></div>
         <div><span>난이도</span><b>${diffItem ? `${diffItem.icon} ${diffItem.label}` : '수업 후 평가로 자동 조절'}</b></div>
       </div>
       <p class="fine">동기화는 진짜 Google 로그인으로만 동작해요. 가짜 로그인이나 자동 로그인은 쓰지 않습니다.<br/>API 키는 백업에 포함되지 않아 새 기기에서 다시 연결해야 해요.<br/>시험 범위 PDF·필기 사진은 시작한 뒤 <b>홈 → 과목 → 시험 범위·자료</b>에서 올리면 AI가 읽고 레슨을 만들어 줘요.</p>`,
@@ -794,7 +787,7 @@ export async function finish(skipped = false) {
     levelSelf: draft.levelSelf,
     examDate: draft.examDate || '',
     goalPct: Number(draft.goalPct) || 70,
-    dailyMinutes: Number(draft.dailyMinutes) || 60,
+    dailyMinutes: clampMinutes(draft.dailyMinutes) || 60,
     done: true,
     curriculumAt: Date.now(),
     createdAt: (getSetup() || {}).createdAt || Date.now(),

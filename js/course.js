@@ -5,14 +5,14 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=0e3447ca';
-import { showView, openKeyModal } from './ui.js?v=0e3447ca';
-import { openDifficultyPrompt } from './difficulty.js?v=0e3447ca';
+} from './core.js?v=fcf2dd51';
+import { showView, openKeyModal } from './ui.js?v=fcf2dd51';
+import { openDifficultyPrompt } from './difficulty.js?v=fcf2dd51';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=0e3447ca';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=0e3447ca';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=0e3447ca';
+} from './gamify.js?v=fcf2dd51';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=fcf2dd51';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=fcf2dd51';
 
 const el = (id) => document.getElementById(id);
 

@@ -563,6 +563,42 @@ export function candidateChain(preferred) {
   return unique([preferred, getModel(), ...cached, ...MODEL_CHAIN]);
 }
 
+/**
+ * 짧은 대기용 모델: 연결 테스트에서 이미 골라 둔 Flash 모델을 그대로 쓴다.
+ * (모델 탐색·재시도 없이 바로 한 번 호출 → 체감 대기 시간을 줄인다)
+ */
+export function fastModel() {
+  const saved = getModel();
+  if (saved && scoreModel(saved) > -Infinity) return saved;
+  const cached = (state.modelCache || []).filter(id => scoreModel(id) > -Infinity)
+    .sort((a, b) => scoreModel(b) - scoreModel(a));
+  return cached[0] || MODEL_CHAIN[0];
+}
+
+/** 짧은 호출용 체인: 고른 모델 + lite 한 번(사용 불가일 때만) */
+function shortChain(preferred) {
+  const lite = (state.modelCache || []).find(id => /lite/i.test(id) && scoreModel(id) > -Infinity) || 'gemini-2.5-flash-lite';
+  return unique([preferred || fastModel(), lite]);
+}
+
+/** signal + 시간 제한을 하나로 묶는다 */
+function timedSignal(signal, ms) {
+  if (!ms) return { signal, timedOut: () => false, done() {} };
+  const ctrl = new AbortController();
+  let timedOut = false;
+  const onAbort = () => ctrl.abort();
+  if (signal) {
+    if (signal.aborted) ctrl.abort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+  }
+  const timer = setTimeout(() => { timedOut = true; ctrl.abort(); }, ms);
+  return {
+    signal: ctrl.signal,
+    timedOut: () => timedOut,
+    done() { clearTimeout(timer); if (signal) signal.removeEventListener('abort', onAbort); },
+  };
+}
+
 function extractText(data, streamPart = false) {
   if (!data) return '';
   if (data.promptFeedback && data.promptFeedback.blockReason) {
@@ -629,26 +665,35 @@ function buildBody({ system, parts, contents, temperature = 0.7, maxTokens = 409
 
 export async function generateText(opts) {
   if (!getKey()) throw new ApiError('API 키를 먼저 연결해 주세요.', { code: 'no_key' });
-  const chain = candidateChain(opts.model);
+  const chain = (Array.isArray(opts.chain) && opts.chain.length
+    ? unique(opts.chain)
+    : (opts.fast ? shortChain(opts.model) : candidateChain(opts.model))).filter(Boolean);
+  const clock = timedSignal(opts.signal, opts.timeoutMs);
   let lastErr = null;
-  for (const id of chain) {
-    let res;
-    try {
-      res = await apiRequest(`/models/${id}:generateContent`, { body: buildBody(opts), signal: opts.signal });
-    } catch (e) {
-      if (e.name === 'AbortError') throw e;
-      lastErr = e;
-      if (e.code === 'bad_key' || e.code === 'forbidden' || !e.retryable) throw e;
-      continue;
+  try {
+    for (const id of chain) {
+      let res;
+      try {
+        res = await apiRequest(`/models/${id}:generateContent`, { body: buildBody(opts), signal: clock.signal });
+        const data = await res.json();
+        const text = extractText(data);
+        if (!text) {
+          lastErr = new ApiError('모델이 빈 응답을 보냈습니다. 다시 시도해 주세요.', { retryable: true, code: 'empty' });
+          continue;
+        }
+        if (!getModel()) setModel(id);
+        return text;
+      } catch (e) {
+        if (clock.timedOut()) {
+          throw new ApiError('AI 응답이 늦어 기본값으로 처리했어요.', { code: 'timeout', retryable: true });
+        }
+        if (e.name === 'AbortError') throw e;
+        lastErr = e;
+        if (e.code === 'bad_key' || e.code === 'forbidden' || !e.retryable) throw e;
+      }
     }
-    const data = await res.json();
-    const text = extractText(data);
-    if (!text) {
-      lastErr = new ApiError('모델이 빈 응답을 보냈습니다. 다시 시도해 주세요.', { retryable: true, code: 'empty' });
-      continue;
-    }
-    if (!getModel()) setModel(id);
-    return text;
+  } finally {
+    clock.done();
   }
   throw lastErr || new ApiError('응답을 받지 못했습니다.', { code: 'unknown', retryable: true });
 }

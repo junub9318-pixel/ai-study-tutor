@@ -1,7 +1,7 @@
 /* =========================================================
    sync.js — Google Drive appDataFolder 동기화 + JSON 백업
    ========================================================= */
-import { K, load, save, toast, openModal, escapeHtml, getSetup, saveSetup, state } from './core.js?v=0e3447ca';
+import { K, load, save, toast, openModal, escapeHtml, getSetup, saveSetup, state } from './core.js?v=fcf2dd51';
 
 const SYNC_KEY = 'aitutor.v1.sync';
 const BACKUP_NAME = 'ai-study-tutor-backup.json';

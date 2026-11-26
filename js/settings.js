@@ -5,17 +5,18 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings, getDifficulty, DIFFICULTY_LEVELS,
-} from './core.js?v=0e3447ca';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=0e3447ca';
-import { openDifficultyPrompt } from './difficulty.js?v=0e3447ca';
-import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=0e3447ca';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=0e3447ca';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=0e3447ca';
+} from './core.js?v=fcf2dd51';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=fcf2dd51';
+import { openDifficultyPrompt } from './difficulty.js?v=fcf2dd51';
+import { gradesFor, ageForGrade, subjectIcon } from './curriculum.js?v=fcf2dd51';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=fcf2dd51';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=fcf2dd51';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=0e3447ca';
-import { openOnboarding } from './onboarding.js?v=0e3447ca';
+} from './sync.js?v=fcf2dd51';
+import { openOnboarding } from './onboarding.js?v=fcf2dd51';
+import { createTimerWheel, clampMinutes } from './routine.js?v=fcf2dd51';
 
 const el = (id) => document.getElementById(id);
 
@@ -161,16 +162,10 @@ export function renderSettings() {
         <label class="field"><span>시험 날짜</span>
           <input type="date" id="setExamDate" value="${escapeHtml(setup.examDate || '')}" />
         </label>
-        <label class="field"><span>하루 학습 시간</span>
-          <select id="setMinutes">
-            ${(() => {
-              const cur = Number(setup.dailyMinutes) || 60;
-              const opts = [20, 30, 45, 60, 90, 120, 180];
-              if (!opts.includes(cur)) opts.push(cur);
-              return opts.sort((a, b) => a - b).map(m => `<option value="${m}" ${cur === m ? 'selected' : ''}>${m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '') : m + '분'}</option>`).join('');
-            })()}
-          </select>
-        </label>
+        <div class="field span2"><span>하루 학습 시간 <i class="field-hint">30분 단위 · 최대 12시간</i></span>
+          <div class="tw-set" id="setMinutesWheel"></div>
+          <input type="hidden" id="setMinutes" value="${clampMinutes(setup.dailyMinutes || 60)}" />
+        </div>
         <label class="field span2"><span>목표</span>
           <select id="setGoal">
             <option value="50" ${Number(setup.goalPct) === 50 ? 'selected' : ''}>50% · 핵심 주제 집중</option>
@@ -345,6 +340,13 @@ export function renderSettings() {
 }
 
 function bindSettings(host) {
+  const minWheelHost = host.querySelector('#setMinutesWheel');
+  if (minWheelHost) {
+    createTimerWheel(minWheelHost, {
+      value: clampMinutes((getSetup() || {}).dailyMinutes || 60),
+      onChange: (v) => { const inp = host.querySelector('#setMinutes'); if (inp) inp.value = String(v); },
+    });
+  }
   host.querySelector('#setNickSave')?.addEventListener('click', () => {
     const p = profile();
     p.nick = host.querySelector('#setNick').value.trim().slice(0, 12);
@@ -382,7 +384,7 @@ function bindSettings(host) {
       school: host.querySelector('#setSchool').value.trim(),
       schoolNote: host.querySelector('#setSchoolNote').value.trim(),
       examDate: host.querySelector('#setExamDate').value || '',
-      dailyMinutes: Number(host.querySelector('#setMinutes').value || 60),
+      dailyMinutes: clampMinutes(Number(host.querySelector('#setMinutes').value || 60)),
       goalPct: Number(host.querySelector('#setGoal').value || 70),
     };
     const keyOf = (s) => ['country', 'level', 'grade', 'semester', 'school', 'schoolNote'].map(k => String(s[k] || '')).join('|');
@@ -420,7 +422,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=0e3447ca').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=fcf2dd51').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
