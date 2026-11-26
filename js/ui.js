@@ -6,8 +6,8 @@ import {
   $, $$, el, escapeHtml, fmt, toast, openModal, hasKey, getKey, setKey, clearKey,
   connectTest, getModel, listModels, ApiError, saveSettings, saveMaterials, uid, dayKey,
   providerInfo, PROVIDER_IDS, getProvider, setProvider, getKeyFor, setKeyFor, clearKeyFor, getModelFor, canSearch,
-} from './core.js?v=618d59f9';
-import { renderHeaderChips } from './gamify.js?v=618d59f9';
+} from './core.js?v=8e2ed827';
+import { renderHeaderChips } from './gamify.js?v=8e2ed827';
 
 /* ---------------- theme ---------------- */
 export function initTheme() {
@@ -203,8 +203,8 @@ export function providerPanelHtml() {
         const p = providerInfo(id);
         return `<button type="button" class="prov-card${id === active ? ' on' : ''}" data-prov="${id}" role="tab" aria-selected="${id === active}">
           <span class="prov-ico">${p.icon}</span>
-          <span class="prov-name">${escapeHtml(p.short)}<small>${escapeHtml(p.label)}</small></span>
-          <span class="prov-flag">${p.search ? '검색 지원' : '무료'}</span>
+          <span class="prov-name">${escapeHtml(p.short)}</span>
+          <span class="prov-sub">${p.search ? 'Google · 검색' : (p.id === 'groq' ? 'Groq · 무료' : 'OpenRouter · 무료')}</span>
         </button>`;
       }).join('')}
     </div>

@@ -3,7 +3,7 @@
    온보딩 Step 2(교육과정) · Step 5(교과서/출판사) · Step 6(단원 선택)
    와 설정의 '교과서 · 단원 편집'이 같은 규칙을 함께 쓴다.
    ========================================================= */
-import { escapeHtml, getSetup, saveSetup } from './core.js?v=618d59f9';
+import { escapeHtml, getSetup, saveSetup } from './core.js?v=8e2ed827';
 
 export const CUSTOM_CURRICULUM = '직접 입력';
 
