@@ -5,12 +5,12 @@ import {
   K, state, load, save, SUBJECTS, $, $$, escapeHtml, fmt, toast, openModal, dayKey, dday,
   currentSubject, setSubject, subjectById, saveMaterials, materialContext, generateJSON,
   getSetup, saveSetup, learnerContext, uid,
-} from './core.js?v=00671424';
-import { showView, openKeyModal } from './ui.js?v=00671424';
+} from './core.js?v=df153281';
+import { showView, openKeyModal } from './ui.js?v=df153281';
 import {
   weeklyXP, xpToday, goal, currentStreak, tierFor, leaderboard, profile, emit,
-} from './gamify.js?v=00671424';
-import { dailyChallengeSummary, startDaily } from './quiz.js?v=00671424';
+} from './gamify.js?v=df153281';
+import { dailyChallengeSummary, startDaily } from './quiz.js?v=df153281';
 
 const el = (id) => document.getElementById(id);
 
@@ -149,7 +149,7 @@ function renderLessonPath(c, prog) {
   host.innerHTML = c.lessons.map((l, i) => {
     const stateCls = l.done ? 'done' : (cur && cur.id === l.id ? 'current' : 'locked');
     return `<div class="lesson ${stateCls}" data-lesson="${l.id}" role="button" tabindex="0">
-      <span class="node">${l.done ? '✓' : cur && cur.id === l.id ? l.icon : '🔒'}</span>
+      <span class="node">${l.done ? '✓' : cur && cur.id === l.id ? '' : '🔒'}</span>
       ${cur && cur.id === l.id ? `<span class="l-ico">${l.icon}</span>` : ''}
       <span class="l-body">
         <span class="l-title">${escapeHtml(l.title)}</span>

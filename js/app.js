@@ -3,22 +3,22 @@
    ========================================================= */
 import {
   K, state, hasKey, save, $, $$, openModal, escapeHtml, toast, getSetup,
-} from './core.js?v=00671424';
+} from './core.js?v=df153281';
 import {
   initTheme, initTabs, initSubject, initKey, showView, openMaterialsModal,
   renderMaterialCount, onView, renderKeyState,
-} from './ui.js?v=00671424';
-import { renderHeaderChips } from './gamify.js?v=00671424';
-import { initTutor } from './tutor.js?v=00671424';
-import { initQuiz } from './quiz.js?v=00671424';
-import { initPlan } from './plan.js?v=00671424';
-import { initCards } from './cards.js?v=00671424';
-import { initAudio } from './audio.js?v=00671424';
-import { initSim } from './sim.js?v=00671424';
-import { initLeague, handleFriendLink } from './league.js?v=00671424';
-import { initCourse, renderCourse } from './course.js?v=00671424';
-import { initSettings } from './settings.js?v=00671424';
-import { initOnboarding, openOnboarding } from './onboarding.js?v=00671424';
+} from './ui.js?v=df153281';
+import { renderHeaderChips } from './gamify.js?v=df153281';
+import { initTutor } from './tutor.js?v=df153281';
+import { initQuiz } from './quiz.js?v=df153281';
+import { initPlan } from './plan.js?v=df153281';
+import { initCards } from './cards.js?v=df153281';
+import { initAudio } from './audio.js?v=df153281';
+import { initSim } from './sim.js?v=df153281';
+import { initLeague, handleFriendLink } from './league.js?v=df153281';
+import { initCourse, renderCourse } from './course.js?v=df153281';
+import { initSettings } from './settings.js?v=df153281';
+import { initOnboarding, openOnboarding } from './onboarding.js?v=df153281';
 
 /* ---------------- 개발용 오류 표시 (?debug=1) ---------------- */
 window.__errors = [];

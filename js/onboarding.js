@@ -5,10 +5,10 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   saveMaterials, currentSubject,
-} from './core.js?v=00671424';
-import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=00671424';
-import { getCourse, renderCourse, renderTopBar } from './course.js?v=00671424';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=00671424';
+} from './core.js?v=df153281';
+import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=df153281';
+import { getCourse, renderCourse, renderTopBar } from './course.js?v=df153281';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=df153281';
 
 const el = (id) => document.getElementById(id);
 let step = 0;
@@ -65,10 +65,10 @@ function setStepChrome() {
 function render() {
   setStepChrome();
   const body = el('onbBody');
-  const fn = [stepKey, stepBasics, stepSubjects, stepLevel, stepRoutine, stepMaterials, stepSync][step];
-  body.innerHTML = fn.html();
+  const def = [stepKey, stepBasics, stepSubjects, stepLevel, stepRoutine, stepMaterials, stepSync][step]();
+  body.innerHTML = def.html();
   body.scrollTop = 0;
-  fn.bind(body);
+  def.bind(body);
 }
 
 /* ---------------- step 1 · API key ---------------- */
@@ -382,7 +382,7 @@ function stepMaterials() {
         for (const f of Array.from(input.files || [])) {
           try {
             if (/^image\//.test(f.type)) {
-              const { readImageFile } = await import('./ui.js?v=00671424');
+              const { readImageFile } = await import('./ui.js?v=df153281');
               const img = await readImageFile(f);
               addMaterial({ id: 'mat' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name || '사진', kind: 'img', chars: 0, text: '', dataUrl: img.dataUrl, createdAt: Date.now() });
             } else {
