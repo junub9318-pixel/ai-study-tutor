@@ -842,7 +842,7 @@ html[data-theme="light"]{ --bg-grad:none; }
 .prof-btn .key-dot{ position:absolute; right:-1px; bottom:-1px; width:9px; height:9px; border-radius:50%; background:var(--danger); border:2px solid var(--bg); }
 .prof-btn .key-dot.ok{ background: var(--ok); }
 .subbar{
-  flex:1; min-width:0; display:flex; align-items:center; gap:9px;
+  flex:0 1 260px; min-width:0; display:flex; align-items:center; gap:9px;
   padding:6px 10px; border-radius:14px;
   background: var(--surface-2); border:1px solid var(--border);
   text-align:left;
@@ -854,7 +854,7 @@ html[data-theme="light"]{ --bg-grad:none; }
 .subbar-track{ display:block; height:4px; border-radius:99px; background: var(--surface-3); overflow:hidden; }
 .subbar-track i{ display:block; height:100%; border-radius:99px; background: linear-gradient(90deg,#3ecf8e,#7bd88f); transition: width .4s; }
 .subbar-caret{ color: var(--muted); font-size:10px; flex:none; }
-.tb-stats{ display:flex; gap:4px; flex:none; }
+.tb-stats{ display:flex; gap:4px; flex:none; margin-left:auto; }
 .tb-stat{
   display:flex; align-items:center; gap:3px; padding:7px 8px; border-radius:12px;
   font-size:12.5px; font-weight:800; color: var(--text);
@@ -895,7 +895,7 @@ html[data-theme="light"]{ --bg-grad:none; }
 .round-btn:hover{ border-color: var(--accent); }
 
 .exam-card{
-  position: relative; margin-top: 26px;
+  position: relative; margin-top: 66px;
   background: var(--surface);
   border: 1px solid var(--border-soft);
   border-radius: 30px;
@@ -904,8 +904,8 @@ html[data-theme="light"]{ --bg-grad:none; }
   box-shadow: var(--shadow);
 }
 .folder-tab{
-  position:absolute; top:-38px; left:-1px;
-  height: 76px; min-width: 54%;
+  position:absolute; bottom:100%; left:-1px;
+  height: 64px; min-width: 54%;
   display:flex; align-items:center; gap:12px;
   padding: 10px 26px 10px 12px;
   background: var(--surface);
@@ -1181,12 +1181,12 @@ html[data-theme="light"]{ --bg-grad:none; }
 .chip-x{ margin-left:6px; color: var(--muted); font-size: 11px; padding: 0 2px; }
 .chip-x:hover{ color: var(--danger); }
 .view[data-view="course"]{ max-width: 760px; margin: 0 auto; }
-.exam-card{ margin-top: 40px; }
+.exam-card{ margin-top: 66px; }
 @media (max-width: 420px){
   .exam-head h1{ font-size: 26px; }
   .exam-card{ border-radius: 24px; border-top-left-radius: 8px; padding: 22px 14px 16px; }
   .exam-body h2{ font-size: 22px; }
-  .folder-tab{ height: 68px; min-width: 62%; padding: 8px 18px 8px 10px; top: -34px; }
+  .folder-tab{ height: 58px; min-width: 62%; padding: 8px 18px 8px 10px; }
   .tab-ring, .tab-ring svg{ width: 40px; height: 40px; }
   .lesson .node{ width: 52px; height: 52px; font-size: 20px; }
   .lesson{ padding: 8px 2px; }
