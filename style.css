@@ -1328,3 +1328,7 @@ html[data-theme="light"] .face.back{ background: var(--surface-2); }
 
 /* 랭킹 빈 안내 */
 .rank-empty{ list-style:none; padding: 14px 10px; text-align:center; font-size:12px; color: var(--muted); border:1px dashed var(--border); border-radius:12px; margin-top:8px; }
+
+/* status 안의 문장은 한 덩어리로 (flex 아이템 분할 방지) */
+.status > span{ flex:1 1 auto; min-width:0; display:block; }
+.status > span .spinner{ display:inline-block; vertical-align:-2px; margin-right:6px; }

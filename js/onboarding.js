@@ -5,11 +5,11 @@ import {
   K, state, SUBJECTS, subjectById, getSetup, saveSetup, setSubject, toast, escapeHtml,
   dday, dayKey, shiftDay, hasKey, getKey, setKey, clearKey, connectTest, generateJSON,
   saveMaterials, currentSubject,
-} from './core.js?v=9953f6e4';
-import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=9953f6e4';
-import { getCourse, renderCourse, renderTopBar, applyCurriculum } from './course.js?v=9953f6e4';
-import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=9953f6e4';
-import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=9953f6e4';
+} from './core.js?v=a05398db';
+import { showView, openKeyModal, addMaterial, fileToMaterial, renderKeyState } from './ui.js?v=a05398db';
+import { getCourse, renderCourse, renderTopBar, applyCurriculum } from './course.js?v=a05398db';
+import { buildCurriculum, basicCurriculum, subjectLabel, subjectIcon } from './curriculum.js?v=a05398db';
+import { getSync, setSync, connectGoogle, driveSetupModal, isDriveReady } from './sync.js?v=a05398db';
 
 const el = (id) => document.getElementById(id);
 let step = 0;
@@ -389,7 +389,7 @@ function stepMaterials() {
         for (const f of Array.from(input.files || [])) {
           try {
             if (/^image\//.test(f.type)) {
-              const { readImageFile } = await import('./ui.js?v=9953f6e4');
+              const { readImageFile } = await import('./ui.js?v=a05398db');
               const img = await readImageFile(f);
               addMaterial({ id: 'mat' + Date.now() + Math.random().toString(36).slice(2, 6), name: f.name || '사진', kind: 'img', chars: 0, text: '', dataUrl: img.dataUrl, createdAt: Date.now() });
             } else {
@@ -454,15 +454,15 @@ function drawCurriculum(list, status, note) {
     if (built < ids.length) {
       status.hidden = false;
       status.className = 'status';
-      status.innerHTML = `<span class="spinner"></span> ${hasKey() ? 'AI가 교육과정을 확인하는 중…' : '기본 교육과정을 준비하는 중…'} <b>${built} / ${ids.length}</b>`;
+      status.innerHTML = `<span><span class="spinner"></span> ${hasKey() ? 'AI가 교육과정을 확인하는 중…' : '기본 교육과정을 준비하는 중…'} <b>${built} / ${ids.length}</b></span>`;
     } else if (ai > 0) {
       status.hidden = false;
       status.className = 'status ok';
-      status.innerHTML = `✅ <b>${ai}개 과목</b>의 교육과정을 AI로 확인했어요${ai < ids.length ? ` · ${ids.length - ai}개는 기본 안내` : ''}`;
+      status.innerHTML = `<span>✅ <b>${ai}개 과목</b>의 교육과정을 AI로 확인했어요${ai < ids.length ? ` · ${ids.length - ai}개는 기본 안내` : ''}</span>`;
     } else {
       status.hidden = false;
       status.className = 'status';
-      status.innerHTML = '📘 지금은 <b>기본 교육과정 안내</b>로 채웠어요. AI 키를 연결하면 학교·학년에 맞춰 바로 다시 확인해요.';
+      status.innerHTML = '<span>📘 지금은 <b>기본 교육과정 안내</b>로 채웠어요. AI 키를 연결하면 학교·학년에 맞춰 바로 다시 확인해요.</span>';
     }
   }
   if (note) {

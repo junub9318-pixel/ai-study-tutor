@@ -5,15 +5,15 @@ import {
   K, state, load, save, SUBJECTS, subjectById, currentSubject, setSubject, getSetup, saveSetup,
   openModal, toast, escapeHtml, fmt, dayKey, dday, hasKey, getKey, clearKey, connectTest, getModel,
   saveSettings,
-} from './core.js?v=9953f6e4';
-import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=9953f6e4';
-import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=9953f6e4';
-import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=9953f6e4';
+} from './core.js?v=a05398db';
+import { openKeyModal, renderKeyState, speak, stopSpeaking, ttsSupported } from './ui.js?v=a05398db';
+import { profile, emit, weeklyXP, tierFor, currentStreak, totalXP } from './gamify.js?v=a05398db';
+import { getCourse, courseProgress, renderCourse, renderTopBar, openAddSubjectModal, courses, courseCurriculum, refreshCurricula } from './course.js?v=a05398db';
 import {
   getSync, setSync, connectGoogle, disconnectGoogle, pushToDrive, pullFromDrive,
   exportJSON, importJSON, driveSetupModal, isDriveReady,
-} from './sync.js?v=9953f6e4';
-import { openOnboarding } from './onboarding.js?v=9953f6e4';
+} from './sync.js?v=a05398db';
+import { openOnboarding } from './onboarding.js?v=a05398db';
 
 const el = (id) => document.getElementById(id);
 
@@ -54,7 +54,7 @@ async function runCurriculumRefresh(host, subjIds, { silent = false } = {}) {
   if (box) {
     box.hidden = false;
     box.className = 'status';
-    box.innerHTML = `<span class="spinner"></span> ${hasKey() ? 'AI가 교육과정을 다시 확인하는 중…' : '기본 교육과정으로 갱신하는 중…'}`;
+    box.innerHTML = `<span><span class="spinner"></span> ${hasKey() ? 'AI가 교육과정을 다시 확인하는 중…' : '기본 교육과정으로 갱신하는 중…'}</span>`;
   }
   try {
     const map = await refreshCurricula(subjIds, {
@@ -62,7 +62,7 @@ async function runCurriculumRefresh(host, subjIds, { silent = false } = {}) {
         if (!box) return;
         if (p.phase === 'start') {
           box.className = 'status';
-          box.innerHTML = `<span class="spinner"></span> <b>${escapeHtml(p.label)}</b> 교육과정 확인 중… (${p.index + 1} / ${p.total})`;
+          box.innerHTML = `<span><span class="spinner"></span> <b>${escapeHtml(p.label)}</b> 교육과정 확인 중… (${p.index + 1} / ${p.total})</span>`;
         }
       },
     });
@@ -74,8 +74,8 @@ async function runCurriculumRefresh(host, subjIds, { silent = false } = {}) {
       box.hidden = false;
       box.className = 'status ok';
       box.innerHTML = ai > 0
-        ? `✅ ${list.length}개 과목 교육과정을 새로 맞췄어요 · AI 확인 ${ai}개${ai < list.length ? ` · 기본 ${list.length - ai}개` : ''}`
-        : `📘 ${list.length}개 과목을 기본 교육과정으로 갱신했어요. Gemini 키를 연결하면 학교·학년에 맞춰 AI가 다시 확인해 줘요.`;
+        ? `<span>✅ ${list.length}개 과목 교육과정을 새로 맞췄어요 · AI 확인 ${ai}개${ai < list.length ? ` · 기본 ${list.length - ai}개` : ''}</span>`
+        : `<span>📘 ${list.length}개 과목을 기본 교육과정으로 갱신했어요. Gemini 키를 연결하면 학교·학년에 맞춰 AI가 다시 확인해 줘요.</span>`;
     }
     if (!silent) toast(ai > 0 ? 'AI가 교육과정을 다시 확인했어요' : '기본 교육과정으로 갱신했어요', ai > 0 ? 'xp' : 'info', 3000);
     return map;
@@ -385,7 +385,7 @@ function bindSettings(host) {
     toast('과목을 목록에서 뺐어요');
   }));
   host.querySelector('#setMaterials')?.addEventListener('click', () => {
-    import('./ui.js?v=9953f6e4').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
+    import('./ui.js?v=a05398db').then(({ openMaterialsModal }) => openMaterialsModal(() => renderSettings()));
   });
   host.querySelector('#setKey')?.addEventListener('click', () => openKeyModal());
   host.querySelector('#setKeyTest')?.addEventListener('click', async () => {
